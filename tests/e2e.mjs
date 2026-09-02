@@ -244,7 +244,7 @@ await page.waitForTimeout(300)
 ok('tab click sets the URL hash', page.url().endsWith('#kibble'))
 ok('document.title follows the tab', (await page.title()).includes('Kibble Board'))
 ok('aria-current marks the active tab', await page.locator('.navtabs button.active').getAttribute('aria-current') === 'page')
-await page.reload({ waitUntil: 'networkidle' })
+await page.reload({ waitUntil: 'domcontentloaded' })
 await page.waitForTimeout(400)
 ok('reload keeps the tab (hash routing)', (await page.locator('.navtabs button.active').textContent()) === 'Kibble Board')
 await page.goBack()
@@ -257,6 +257,16 @@ await page.locator('input[placeholder="encrypts your key file backup"]').fill('h
 await page.locator('input[placeholder="repeat it"]').fill('hunter2starlong')
 await page.locator('button', { hasText: 'Generate key pair' }).click()
 await page.locator('.didbadge.on').waitFor({ state: 'visible', timeout: 15000 })
+// scan-on-open: a reload with an identity must repopulate the activity scan by itself
+await page.reload({ waitUntil: 'domcontentloaded' })
+let autoScanned = true
+try {
+  await page.waitForFunction(
+    () => { const s = JSON.parse(localStorage.getItem('flop-toolkit-v1')); return s && s.activity && s.activity.scan },
+    null, { timeout: 45000, polling: 1000 },
+  )
+} catch { autoScanned = false }
+ok('scan runs automatically on app open', autoScanned)
 await page.locator('.didbadge.on').click()
 await page.waitForTimeout(300)
 ok('topbar DID badge copies on click', (await page.locator('.didbadge.on').textContent()).includes('copied'))

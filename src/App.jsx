@@ -3,6 +3,7 @@ import { useStore } from './lib/store.jsx'
 import { useI18n, LANGS } from './lib/i18n.js'
 import { shortDid } from './lib/did.js'
 import { copyText } from './lib/util.js'
+import { refreshActivity } from './lib/contrib.js'
 import Dashboard from './components/Dashboard.jsx'
 import Identity from './components/Identity.jsx'
 import Kibble from './components/Kibble.jsx'
@@ -43,6 +44,14 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
+
+  // scan on every app open: re-read the rooms + score ledger in the background
+  // so the tracker reflects your latest activity before you even open the Guide
+  useEffect(() => {
+    const did = store.state.identity?.did
+    if (!did) return
+    refreshActivity(did).then((a) => store.setActivity(a)).catch(() => {})
+  }, []) // eslint-disable-line
 
   useEffect(() => {
     const onHash = () => setTab(tabFromHash())

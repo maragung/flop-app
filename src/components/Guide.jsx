@@ -148,8 +148,9 @@ export default function Guide({ go }) {
         )}
         <p className="tiny muted" style={{ margin: '0 0 10px' }}>
           ONE account · ONE DID · {identity ? shortDid(identity.did) : 'no identity yet'} — auto-detected tasks read
-          your live room messages, the board's own score ledger and this browser's state, and re-scan automatically
-          a few seconds after every signed post. Nothing self-reported counts.
+          your live room messages, the board's own score ledger and this browser's state. The tracker scans
+          automatically every time you open the app and again a few seconds after every signed post.
+          Nothing self-reported counts.
         </p>
 
         {identity ? (
