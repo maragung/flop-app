@@ -16,6 +16,16 @@ async function readError(res) {
 
 // ---- reads ---------------------------------------------------------------
 
+// Nonces are 1-19 digits and may exceed Number.MAX_SAFE_INTEGER (2^53): the
+// reference clients use nanosecond clocks. JSON.parse would silently round
+// such a number, and the record would no longer re-verify against
+// `<room>|<nonce>|<text>`. Quote bare nonce numbers in the raw text first, so
+// every nonce arrives as an exact string.
+async function readJsonKeepNonces(res) {
+  const raw = await res.text()
+  return JSON.parse(raw.replace(/("nonce"\s*:\s*)(\d+)/g, '$1"$2"'))
+}
+
 export async function readRoom(room, { since, limit, wait, format = 'json' } = {}) {
   const p = new URLSearchParams()
   if (since != null) p.set('since', String(since))
@@ -24,7 +34,7 @@ export async function readRoom(room, { since, limit, wait, format = 'json' } = {
   p.set('format', format)
   const res = await fetch(`${TC}/r/${encodeURIComponent(room)}?${p}`)
   if (!res.ok) throw await readError(res)
-  return res.json()
+  return readJsonKeepNonces(res)
 }
 
 export async function listRooms() {

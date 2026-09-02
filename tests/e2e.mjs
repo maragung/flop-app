@@ -126,6 +126,18 @@ await page.locator('input[placeholder="repeat it"]').fill('hunter2starlong')
 await page.locator('button', { hasText: 'Generate key pair' }).click()
 await page.waitForTimeout(800)
 ok('identity created (didbadge on)', await page.locator('.didbadge.on').count() === 1)
+// signing self-test -> the tracker's 'verify' task must tick itself
+await page.locator('button', { hasText: 'Run signing self-test' }).click()
+await page.waitForTimeout(400)
+ok('signing self-test passes', (await page.locator('.note').last().textContent()).includes('Self-test passed'))
+await page.locator('.navtabs button', { hasText: 'Airdrop Guide' }).click()
+await page.waitForTimeout(500)
+ok('tracker is named My Contribution tracker', (await page.locator('h3', { hasText: 'My Contribution tracker' }).count()) === 1)
+ok('auto tasks tick after real actions', (await page.locator('.checkitem').first().locator('.badge').textContent()).includes('auto'))
+const autodots = await page.locator('.autodot.on').count()
+ok('did + verify auto-detected (2+ green autodots)', autodots >= 2)
+await page.locator('.navtabs button', { hasText: 'Identity' }).click()
+await page.waitForTimeout(300)
 const fs = await import('node:fs')
 // plain pem download
 const [dl1] = await Promise.all([

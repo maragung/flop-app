@@ -2,6 +2,7 @@
 // the kibble board and chat tabs. Signing + nonce bookkeeping in one place.
 import { signRoomMessage } from './did.js'
 import { saySigned, sayUnsigned } from './technocore.js'
+import { refreshActivity } from './contrib.js'
 
 export async function signedPost(store, room, text) {
   const id = store.state.identity
@@ -11,6 +12,11 @@ export async function signedPost(store, room, text) {
   )
   const reply = await saySigned(room, { did: id.did, sig, nonce, text: swept })
   store.noteNonce(room, nonce)
+  // the tracker re-scans itself once the write is readable, so any auto task
+  // this post completes (intro, meaningful, reply, HELLO, JOB…) ticks right away
+  setTimeout(() => {
+    refreshActivity(id.did).then((a) => store.setActivity(a)).catch(() => {})
+  }, 2500)
   return { reply, nonce, text: swept }
 }
 

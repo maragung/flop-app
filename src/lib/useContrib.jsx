@@ -2,7 +2,7 @@
 // activity scan in the store and exposes the computed auto-checks to any page.
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from './store.jsx'
-import { scanActivity, fetchScoreTerms, computeAutoChecks } from './contrib.js'
+import { refreshActivity, computeAutoChecks } from './contrib.js'
 
 const STALE_MS = 15 * 60 * 1000
 
@@ -17,11 +17,7 @@ export function useContrib({ auto = false } = {}) {
     setScanning(true)
     setScanErr('')
     try {
-      const [scan, score] = await Promise.all([
-        scanActivity(identity.did),
-        fetchScoreTerms(identity.did),
-      ])
-      store.setActivity({ at: new Date().toISOString(), did: identity.did, scan, score })
+      store.setActivity(await refreshActivity(identity.did))
     } catch (e) {
       setScanErr(e)
     }

@@ -102,6 +102,14 @@ export async function fetchScoreTerms(did) {
   }
 }
 
+// Full activity refresh (room scan + score ledger) as a store-ready object.
+// Called by useContrib.scan() and — fire-and-forget — right after any signed
+// write lands, so the tracker ticks without anyone pressing a button.
+export async function refreshActivity(did) {
+  const [scan, score] = await Promise.all([scanActivity(did), fetchScoreTerms(did)])
+  return { at: new Date().toISOString(), did, scan, score }
+}
+
 const DAY = 864e5
 
 // The single source of truth for auto-completion. Returns

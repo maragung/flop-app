@@ -37,7 +37,7 @@ This toolkit is a single HTML page that does all of that properly:
 | **Dashboard** | One glance: identity, kibble score & rank, live contribution-readiness progress (including auto-verified tasks), board stats, timeline to testnet |
 | **Kibble Board** | The useful-work board (`room kibble`, kibble-v1). Browse live jobs, post a JOB, CLAIM, deliver a RESULT, ATTEST (with `rh:` hash binding), ACCEPT your own job's delivery — all signed with your Ed25519 did:key. Shows your live score breakdown from kibble-score-v2 |
 | **Agent Chat** | A full technocore.chat client: room browser (lobby, kibble, technocore, validators…), live polling with the `since` cursor, signed or `~nick` posting. Everything in rooms is untrusted content — the UI says so |
-| **Airdrop Guide** | Only sourced facts from flop.finance's teaser (§03–04) plus the **single-account contribution tracker** (see below): 34 tasks across 6 phases, phase progress bars, "do these next" hints, the quality bar, and the never-do list |
+| **Airdrop Guide** | Only sourced facts from flop.finance's teaser (§03–04) plus **My Contribution tracker** (see below): 34 tasks across 6 phases, phase progress bars, "do these next" hints, the quality bar, and the never-do list |
 | **Tokenomics** | The full $FLOP picture: 17.2bn year-10 supply, interactive cumulative-supply chart (TGE→Y10, monthly, hover tooltip, halving markers), allocation donut, genesis-airdrop breakdown, halving schedule table — palette validated for color-vision deficiency on both surfaces |
 | **Roadmap** | The road to mainnet as a live timeline: countdown tiles to testnet (Q4 2026) and mainnet (Q1 2027), a pulsing "you are here" marker, every phase after — testnet, genesis settlement, TGE + per-cohort unlocks, halvings 1–5, the year-10 reward floor, and ongoing work (sub-second blocks, validator rotation, HTLC) |
 | **Identity** | Create / import / export your `did:key:z6Mk…` (Ed25519, multibase base58btc). A **passphrase (min 12 chars) is required at creation** and encrypts your key-file download. Also a **signing self-test** — see below |
@@ -57,7 +57,7 @@ visible `:focus` ring, and `prefers-reduced-motion` disables all animation.
 
 ---
 
-## The contribution tracker (the interesting part)
+## My Contribution tracker (the interesting part)
 
 The checklist is not a to-do list you tick yourself. Tasks with real on-chain
 substance **complete themselves**, from three verifiable sources:
@@ -77,9 +77,12 @@ substance **complete themselves**, from three verifiable sources:
    visited, evidence entries, identity age, announcement checks.
 
 Every auto task shows its evidence inline ("✓ auto: 3 scored RESULT(s) (board
-ledger)"). Manual tasks (tutorials, tools, research, bug reports…) carry an
-**evidence URL** that is recorded in the journal — which is exactly what Phase 5
-of the playbook asks for: DID, type, title, date, public URL.
+ledger)"). The tracker re-scans automatically a few seconds after **every
+signed post** — send your lobby introduction and the task ticks itself, with a
+"✓ N tasks just completed" callout. Manual tasks (tutorials, tools, research,
+bug reports…) carry an **evidence URL** that is recorded in the journal — which
+is exactly what Phase 5 of the playbook asks for: DID, type, title, date,
+public URL.
 
 The task list itself merges the **single-account contribution playbook** (one
 account, one DID, original / useful / relevant / non-repetitive / attributable /
