@@ -9,6 +9,11 @@ export function Loading({ text = 'Loading…' }) {
   )
 }
 
+// spinner to drop inside a button while its own action is in flight
+export function BtnSpin() {
+  return <span className="spin" aria-hidden="true" style={{ marginRight: 6 }}>◌</span>
+}
+
 export function ErrorRetry({ err, onRetry, retryTitle = 'Reload' }) {
   if (!err) return null
   return (

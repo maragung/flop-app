@@ -4,7 +4,7 @@ import { listRooms, readRoom, fmtTs, ROOM_NAME_OK } from '../lib/technocore.js'
 import { parseLine } from '../lib/kibble.js'
 import { signedPost, unsignedPost } from '../lib/actions.js'
 import { shortAny } from '../lib/did.js'
-import { Loading, ErrorRetry } from './Retry.jsx'
+import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 
 const SUGGESTED = ['lobby', 'kibble', 'technocore', 'flop', 'validators', 'meta']
 
@@ -194,7 +194,9 @@ export default function Chat() {
         />
         <div className="spread" style={{ marginTop: 8 }}>
           <span className="tiny muted">{text.length}/4096 · same text reposted within a few seconds is refused (422) — rephrase instead</span>
-          <button className="primary" disabled={busy || !text.trim()} onClick={send}>Send</button>
+          <button className="primary" disabled={busy || !text.trim()} onClick={send}>
+            {busy ? <><BtnSpin /> Sending…</> : 'Send'}
+          </button>
         </div>
       </div>
     </div>

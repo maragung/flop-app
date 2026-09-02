@@ -124,6 +124,10 @@ ok('passphrase mismatch rejected', (await page.locator('.error').last().textCont
 await page.locator('input[placeholder="encrypts your key file backup"]').fill('hunter2starlong')
 await page.locator('input[placeholder="repeat it"]').fill('hunter2starlong')
 await page.locator('button', { hasText: 'Generate key pair' }).click()
+// busy state: the button itself must show a spinner + progress label
+const genBtn = page.locator('button.primary').first()
+ok('busy button shows progress label', (await genBtn.textContent()).includes('Deriving'))
+ok('busy button shows spinner icon', await genBtn.locator('.spin').count() === 1)
 await page.waitForTimeout(800)
 ok('identity created (didbadge on)', await page.locator('.didbadge.on').count() === 1)
 // creating the identity completes the 'did' task -> global toast, whatever tab is open
@@ -278,6 +282,19 @@ ok('clipboard holds the full DID', (await page.evaluate(() => navigator.clipboar
 await page.locator('.navtabs button', { hasText: 'Dashboard' }).click()
 await page.waitForTimeout(300)
 ok('dashboard title after navigation', (await page.title()).startsWith('Dashboard'))
+
+// scan button shows a spinner while a scan is running
+await page.locator('.navtabs button', { hasText: 'Airdrop Guide' }).click()
+let spinOk = false
+try {
+  const rescan = page.locator('button', { hasText: 'Re-scan my live activity' })
+  await rescan.waitFor({ state: 'visible', timeout: 30000 })
+  await rescan.click()
+  await page.waitForTimeout(150)
+  const busyBtn = page.locator('button', { hasText: 'Scanning…' }).first()
+  spinOk = (await busyBtn.textContent()).includes('Scanning') && (await busyBtn.locator('.spin').count()) === 1
+} catch { spinOk = false }
+ok('scan button shows spinner while scanning', spinOk)
 
 // dashboard stats / readiness after wipe (fresh state)
 await page.locator('.navtabs button').first().click()

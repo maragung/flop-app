@@ -3,7 +3,7 @@ import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
 import { taskDone } from '../lib/contrib.js'
 import { useContrib } from '../lib/useContrib.jsx'
-import { Loading, ErrorRetry } from './Retry.jsx'
+import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { shortDid } from '../lib/did.js'
 
 const TRACKS = [
@@ -137,7 +137,7 @@ export default function Guide({ go }) {
         {identity ? (
           <div className="row" style={{ marginBottom: 8 }}>
             <button className="small primary" disabled={scanning} onClick={() => scan()}>
-              {scanning ? 'Scanning…' : activity ? '↻ Re-scan my live activity' : 'Scan my live activity'}
+              {scanning ? <><BtnSpin /> Scanning…</> : activity ? '↻ Re-scan my live activity' : 'Scan my live activity'}
             </button>
             {activity && <span className="tiny muted">last scan {new Date(activity.at).toLocaleString()} · {activity.scan?.roomsPosted?.length || 0} room(s) with your posts</span>}
           </div>

@@ -4,11 +4,11 @@ import { kibbleBoard, kibbleScore } from '../lib/technocore.js'
 import { CATEGORIES, helloLine, jobLine, claimLine, resultLine, attestLine } from '../lib/kibble.js'
 import { signedPost } from '../lib/actions.js'
 import { shortDid, shortAny } from '../lib/did.js'
-import { Loading, ErrorRetry } from './Retry.jsx'
+import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 
 const STATUS_ORDER = ['open', 'claimed', 'delivered', 'useful', 'attested', 'not_useful', 'rejected']
 
-function JobCard({ job, me, onAction, busy }) {
+function JobCard({ job, me, onAction, busy, busyKey }) {
   const [open, setOpen] = useState(false)
   const isPoster = me && job.poster_did === me
   const isWorker = me && job.worker_did === me
@@ -37,7 +37,11 @@ function JobCard({ job, me, onAction, busy }) {
       {(actionable || open) && (
         <div className="row" style={{ marginTop: 8 }}>
           <button className="small ghost" onClick={() => setOpen(!open)}>{open ? 'Close' : 'Open'}</button>
-          {canClaim && <button className="small primary" disabled={busy} onClick={() => onAction('claim', job)}>Claim</button>}
+          {canClaim && (
+            <button className="small primary" disabled={busy} onClick={() => onAction('claim', job)}>
+              {busyKey === `claim:${job.job_id}` ? <><BtnSpin /> Claiming…</> : 'Claim'}
+            </button>
+          )}
           {canAccept && (
             <button className="small" disabled={busy} onClick={() => setOpen(true)} title="A poster's useful ATTEST counts as ACCEPT (×1)">
               Accept / attest
@@ -65,15 +69,15 @@ function JobCard({ job, me, onAction, busy }) {
               ))}
             </div>
           )}
-          {canDeliver && <DeliverForm job={job} onAction={onAction} busy={busy} />}
-          {(canAttest || canAccept) && <AttestForm job={job} onAction={onAction} busy={busy} isPoster={canAccept} />}
+          {canDeliver && <DeliverForm job={job} onAction={onAction} busy={busy} busyKey={busyKey} />}
+          {(canAttest || canAccept) && <AttestForm job={job} onAction={onAction} busy={busy} busyKey={busyKey} isPoster={canAccept} />}
         </div>
       )}
     </div>
   )
 }
 
-function DeliverForm({ job, onAction, busy }) {
+function DeliverForm({ job, onAction, busy, busyKey }) {
   const [summary, setSummary] = useState('')
   return (
     <div>
@@ -81,14 +85,14 @@ function DeliverForm({ job, onAction, busy }) {
       <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="One or two sentences describing the actual work — concrete beats generic." />
       <div style={{ marginTop: 6 }}>
         <button className="small primary" disabled={busy || !summary.trim()} onClick={() => onAction('result', job, { summary })}>
-          Deliver result
+          {busyKey === `result:${job.job_id}` ? <><BtnSpin /> Delivering…</> : 'Deliver result'}
         </button>
       </div>
     </div>
   )
 }
 
-function AttestForm({ job, onAction, busy, isPoster }) {
+function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
   const [reason, setReason] = useState('')
   const [verdict, setVerdict] = useState('useful')
   return (
@@ -105,14 +109,16 @@ function AttestForm({ job, onAction, busy, isPoster }) {
           disabled={busy || !reason.trim()}
           onClick={() => onAction('attest', job, { verdict, reason })}
         >
-          {isPoster ? 'ACCEPT (attest)' : 'Attest'}
+          {busyKey === `attest:${job.job_id}`
+            ? <><BtnSpin /> {isPoster ? 'Accepting…' : 'Attesting…'}</>
+            : (isPoster ? 'ACCEPT (attest)' : 'Attest')}
         </button>
       </div>
     </div>
   )
 }
 
-function NewJobForm({ onAction, busy }) {
+function NewJobForm({ onAction, busy, busyKey }) {
   const [category, setCategory] = useState('explain')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -132,7 +138,7 @@ function NewJobForm({ onAction, busy }) {
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <button className="primary" disabled={busy || !title.trim() || !body.trim()} onClick={() => onAction('job', null, { category, title, body })}>
-          Post JOB
+          {busyKey === 'job:new' ? <><BtnSpin /> Posting…</> : 'Post JOB'}
         </button>
       </div>
     </div>
@@ -148,6 +154,7 @@ export default function Kibble() {
   const [scoreErr, setScoreErr] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [busyKey, setBusyKey] = useState('')
   const [flash, setFlash] = useState('')
   const [status, setStatus] = useState('all')
   const [category, setCategory] = useState('all')
@@ -185,6 +192,7 @@ export default function Kibble() {
 
   const onAction = async (kind, job, opts = {}) => {
     setErr(''); setFlash(''); setBusy(true)
+    setBusyKey(`${kind}:${job?.job_id || 'new'}`)
     try {
       let text
       if (kind === 'job') {
@@ -209,6 +217,7 @@ export default function Kibble() {
       setErr(e.message)
     }
     setBusy(false)
+    setBusyKey('')
   }
 
   useEffect(() => () => clearTimeout(refreshRef.current), [])
@@ -238,7 +247,9 @@ export default function Kibble() {
           <div className="row">
             <button className="small" onClick={() => { refresh(); refreshScore() }} disabled={!board && !!err}>Refresh</button>
             <button className="small" onClick={() => setShowNew(!showNew)}>{showNew ? 'Cancel' : '+ Post a job'}</button>
-            {me && <button className="small ghost" disabled={busy} onClick={() => onAction('hello')}>Send HELLO</button>}
+            {me && <button className="small ghost" disabled={busy} onClick={() => onAction('hello')}>
+              {busyKey === 'hello:undefined' ? <><BtnSpin /> Sending…</> : 'Send HELLO'}
+            </button>}
           </div>
         </div>
         <div className="statrow" style={{ marginTop: 10 }}>
@@ -258,7 +269,7 @@ export default function Kibble() {
       {showNew && (
         <div className="card">
           <h3>Post a JOB</h3>
-          <NewJobForm onAction={onAction} busy={busy} />
+          <NewJobForm onAction={onAction} busy={busy} busyKey={busyKey} />
         </div>
       )}
 
@@ -322,7 +333,7 @@ export default function Kibble() {
           {boardErr && board === null && <p className="muted small">The board did not load — hit ↻ Reload above.</p>}
           {board && jobs.length === 0 && <p className="muted">No jobs match.</p>}
           {jobs.map((j) => (
-            <JobCard key={j.job_id} job={j} me={me?.did} onAction={onAction} busy={busy} />
+            <JobCard key={j.job_id} job={j} me={me?.did} onAction={onAction} busy={busy} busyKey={busyKey} />
           ))}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useStore } from '../lib/store.jsx'
 import { didFromSeed, randomSeedHex, validateSeedHex, shortDid, hexToBytes, bytesToHex, signRoomMessage, verifyRoomMessage } from '../lib/did.js'
 import { seedToPem, encryptSeedToPem, decryptPemToSeed, pemLooksEncrypted } from '../lib/keyfile.js'
 import { copyText } from '../lib/util.js'
+import { BtnSpin } from './Retry.jsx'
 
 function KeyField({ label, value, secret = false }) {
   const [show, setShow] = useState(!secret)
@@ -180,7 +181,7 @@ export default function Identity() {
           <label>Repeat passphrase</label>
           <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder="repeat it" maxLength={256} />
           <div style={{ marginTop: 14 }}>
-            <button className="primary" disabled={busy} onClick={create}>{busy ? 'Deriving…' : 'Generate key pair'}</button>
+            <button className="primary" disabled={busy} onClick={create}>{busy ? <><BtnSpin /> Deriving…</> : 'Generate key pair'}</button>
           </div>
           <p className="tiny muted" style={{ margin: '8px 0 0' }}>
             The passphrase encrypts the .pem key file you download (PBES2: PBKDF2-SHA256 ×600k + AES-256-CBC).
@@ -247,7 +248,7 @@ export default function Identity() {
         {identity.pass ? (
           <>
             <div className="row">
-              <button className="small primary" disabled={busy} onClick={() => downloadPemEnc(identity.pass)}>{busy ? 'Deriving…' : 'Download encrypted .pem'}</button>
+              <button className="small primary" disabled={busy} onClick={() => downloadPemEnc(identity.pass)}>{busy ? <><BtnSpin /> Deriving…</> : 'Download encrypted .pem'}</button>
               <button className="small ghost" onClick={downloadTxt}>plain .txt</button>
               <button className="small ghost" onClick={downloadPem}>plain .pem</button>
             </div>
@@ -273,7 +274,7 @@ export default function Identity() {
             <div className="row">
               <input type="password" style={{ maxWidth: 200 }} placeholder="passphrase (min 12 chars)" value={pass} onChange={(e) => setPass(e.target.value)} />
               <input type="password" style={{ maxWidth: 200 }} placeholder="repeat passphrase" value={pass2} onChange={(e) => setPass2(e.target.value)} />
-              <button className="small" disabled={busy || !pass} onClick={() => downloadPemEnc()}>{busy ? 'Deriving…' : 'Download encrypted .pem'}</button>
+              <button className="small" disabled={busy || !pass} onClick={() => downloadPemEnc()}>{busy ? <><BtnSpin /> Deriving…</> : 'Download encrypted .pem'}</button>
             </div>
             <p className="tiny muted" style={{ margin: '8px 0 0' }}>
               Encrypted with PBES2 — PBKDF2-HMAC-SHA256 (600,000 rounds) + AES-256-CBC — decrypted by any OpenSSL:
