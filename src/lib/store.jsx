@@ -3,6 +3,7 @@
 // and full JSON backup/restore. No server, no telemetry, keys never leave
 // the device except into technocore.chat messages the user signs on purpose.
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { encryptSeedToPem, hexToBytes } from './keyfile.js'
 
 const LS_KEY = 'flop-toolkit-v1'
 const COOKIE_PREFIX = 'ftk'
@@ -124,6 +125,27 @@ export function parseBackup(text) {
     throw new Error('Not a FLOP Toolkit backup (missing identity/journal)')
   }
   return { backup: obj.app ? obj : null, state: st }
+}
+
+// Encrypted backup — the private key never leaves the browser in plain text.
+// The seed is wrapped as a PBES2 encrypted PEM (the same scheme as the Identity
+// tab's key files, readable by openssl) under `identity.encSeed`; the stored
+// key-file passphrase and the raw seed are stripped from the payload. Everything
+// else (journal, checklist, settings) stays plain so the file remains inspectable.
+export function encryptedBackup(state, passphrase) {
+  const copy = JSON.parse(JSON.stringify(state))
+  const payload = backupPayload(copy)
+  const id = payload.state.identity
+  if (id) {
+    delete id.pass
+    if (id.seedHex) {
+      if (!passphrase) throw new Error('A passphrase is required to encrypt the key')
+      payload.keyEnc = 'PBES2 (PBKDF2-SHA256 ×600k + AES-256-CBC)'
+      id.encSeed = encryptSeedToPem(hexToBytes(id.seedHex), passphrase)
+      delete id.seedHex
+    }
+  }
+  return payload
 }
 
 // ---- React context --------------------------------------------------------

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
-import { useStore, backupPayload, parseBackup, cookiesRead, cookiesWrite, cookiesClear } from '../lib/store.jsx'
+import { useStore, backupPayload, parseBackup, encryptedBackup, cookiesRead, cookiesWrite, cookiesClear } from '../lib/store.jsx'
+import { decryptPemToSeed, bytesToHex } from '../lib/keyfile.js'
+import { copyText } from '../lib/util.js'
 import { BtnSpin } from './Retry.jsx'
 
 export default function Backup() {
@@ -9,45 +11,70 @@ export default function Backup() {
   const [err, setErr] = useState('')
   const [pasted, setPasted] = useState('')
   const [wipeStage, setWipeStage] = useState(0)
-  const [busyKey, setBusyKey] = useState('') // 'file' | 'paste' | 'cookies'
+  const [busyKey, setBusyKey] = useState('') // 'file' | 'paste' | 'cookies' | 'export:file' | 'export:copy'
   const busy = Boolean(busyKey)
+  const hasKey = Boolean(store.state.identity?.seedHex)
+  // prefill with the identity's key-file passphrase when there is one (it already
+  // lives in this browser's localStorage — the export must still ask, not silently use it)
+  const [expPass, setExpPass] = useState(store.state.identity?.pass || '')
+  const [expPass2, setExpPass2] = useState(store.state.identity?.pass || '')
+  const [resPass, setResPass] = useState('')
 
   const say = (m) => { setFlash(m); setErr('') }
 
-  const exportFile = () => {
-    const payload = backupPayload(store.state)
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `flop-toolkit-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-    say('Backup file downloaded. It contains your private key — store it somewhere you control.')
-    store.update((s) => { s.lastBackupAt = new Date().toISOString() })
-  }
-
-  const exportText = async () => {
-    const text = JSON.stringify(backupPayload(store.state))
-    try {
-      await navigator.clipboard.writeText(text)
-      say('Backup JSON copied to clipboard. It contains your private key.')
-    } catch {
-      setPasted(text)
-      say('Clipboard blocked — the JSON is in the box below; copy it manually.')
+  const doExport = (kind) => {
+    setErr(''); setFlash('')
+    if (hasKey) {
+      if (expPass.length < 12) return setErr('Passphrase must be at least 12 characters')
+      if (expPass !== expPass2) return setErr('Passphrases do not match')
     }
+    setBusyKey('export:' + kind)
+    // PBKDF2 (600k rounds) blocks the thread — let the button paint its busy state first
+    setTimeout(() => {
+      try {
+        const payload = encryptedBackup(store.state, hasKey ? expPass : null)
+        const json = JSON.stringify(payload, null, 2)
+        if (kind === 'file') {
+          const blob = new Blob([json], { type: 'application/json' })
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(blob)
+          a.download = `flop-toolkit-backup-${new Date().toISOString().slice(0, 10)}.json`
+          a.click()
+          URL.revokeObjectURL(a.href)
+          say('Encrypted backup downloaded. The key inside is protected by your passphrase — the passphrase itself is NOT in the file.')
+          store.update((s) => { s.lastBackupAt = new Date().toISOString() })
+        } else {
+          copyText(json).then(
+            () => say('Encrypted backup JSON copied to clipboard. The key inside is protected by your passphrase.'),
+            () => { setPasted(json); say('Clipboard blocked — the JSON is in the box on the right; copy it manually.') },
+          )
+        }
+      } catch (e) {
+        setErr(`Export failed: ${e.message}`)
+      }
+      setBusyKey('')
+    }, 30)
   }
 
   const doRestore = (text, key) => {
     setErr(''); setFlash('')
     setBusyKey(key)
-    // let the button paint its busy state before the (blocking) confirm dialog
+    // let the button paint its busy state before the (blocking) confirm + PBKDF2 run
     setTimeout(() => {
       const t0 = Date.now()
       let msg = ''
       try {
         const { state } = parseBackup(text)
+        let st = state
+        if (st.identity?.encSeed) {
+          // encrypted backup: unwrap the key with the export passphrase
+          if (!resPass) throw new Error('This backup encrypts the private key — enter the passphrase it was exported with')
+          const seed = decryptPemToSeed(st.identity.encSeed, resPass)
+          const { encSeed, ...rest } = st.identity
+          st = { ...st, identity: { ...rest, seedHex: bytesToHex(seed) } }
+        }
         if (confirm('Replace everything in this browser with the backup?')) {
-          store.replaceState(state)
+          store.replaceState(st)
           setPasted('')
           msg = 'Restored ✓'
         }
@@ -102,19 +129,39 @@ export default function Backup() {
   return (
     <div className="grid cols-2">
       <div className="card">
-        <h3>Backup (export)</h3>
+        <h3>Backup (export) <span className="muted small">— key encrypted with your passphrase</span></h3>
         <p className="muted small">
-          A complete snapshot: your DID <b>and its private key</b>, nickname, checklist, journal, and settings.
-          One JSON file, readable anywhere — including the paste box on the right of any other browser or device.
+          A complete snapshot: your DID, nickname, checklist, journal, and settings — plus the
+          <b> private key, encrypted</b> (PBES2: PBKDF2-SHA256 ×600k + AES-256-CBC, the same format
+          openssl reads). Without the passphrase the key inside is unreadable; the passphrase itself
+          is never written into the file.
         </p>
-        <div className="row">
-          <button className="primary" onClick={exportFile}>Download .json</button>
-          <button onClick={exportText}>Copy JSON</button>
+        {hasKey && (
+          <>
+            <label>Backup passphrase (min 12 characters)</label>
+            <input type="password" value={expPass} onChange={(e) => setExpPass(e.target.value)} placeholder="encrypts the private key inside the backup" maxLength={256} />
+            <label>Repeat passphrase</label>
+            <input type="password" value={expPass2} onChange={(e) => setExpPass2(e.target.value)} placeholder="repeat it" maxLength={256} />
+            <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+              {store.state.identity?.pass
+                ? 'Prefilled with this identity’s key-file passphrase — change it here to protect the backup with a different one.'
+                : 'Choose a passphrase you will remember — a lost passphrase makes the backup’s key unrecoverable.'}
+            </p>
+          </>
+        )}
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="primary" disabled={busy || (hasKey && (!expPass || !expPass2))} onClick={() => doExport('file')}>
+            {busyKey === 'export:file' ? <><BtnSpin /> Encrypting…</> : 'Download .json'}
+          </button>
+          <button disabled={busy || (hasKey && (!expPass || !expPass2))} onClick={() => doExport('copy')}>
+            {busyKey === 'export:copy' ? <><BtnSpin /> Encrypting…</> : 'Copy JSON'}
+          </button>
         </div>
         {store.state.lastBackupAt && <p className="tiny muted">Last export: {new Date(store.state.lastBackupAt).toLocaleString()}</p>}
         <div className="note warn small" style={{ marginTop: 10 }}>
-          The backup includes the private key in plain text. Don't paste it into chat rooms, don't upload it
-          to cloud drives you don't control, don't share it "for verification". Anyone with it signs as you.
+          Even encrypted, treat the backup like cash: don't paste it into chat rooms or share it
+          "for verification". Backups exported by older versions of this app held the key in
+          <b> plain text</b> — those still restore (passphrase not needed for them).
         </div>
       </div>
 
@@ -127,6 +174,8 @@ export default function Backup() {
           </button>
           <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
         </div>
+        <label style={{ marginTop: 8 }}>Passphrase (needed when the backup encrypts the key)</label>
+        <input type="password" value={resPass} onChange={(e) => setResPass(e.target.value)} placeholder="passphrase the backup was exported with" maxLength={256} />
         <label>…or paste backup JSON</label>
         <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder='{"app":"flop-toolkit",…}' />
         <div style={{ marginTop: 8 }}>

@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (68 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (77 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -323,8 +323,38 @@ try {
 } catch { restoreBusy = false }
 ok('restore button shows spinner while restoring', restoreBusy)
 await page.waitForTimeout(1200)
-ok('restore completes (Restored ✓)', (await page.locator('.note', { hasText: 'Restored ✓' }).count()) === 1)
-ok('state survives the round-trip (identity back)', await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity)))
+ok('legacy plain backup restores (Restored ✓)', (await page.locator('.note', { hasText: 'Restored ✓' }).count()) === 1)
+ok('state survives the plain round-trip (identity back)', await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity)))
+
+// encrypted export: passphrase-gated, key never in plain text
+const resPassInput = page.locator('input[placeholder="passphrase the backup was exported with"]')
+const didBeforeEnc = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.did)
+// the export passphrase inputs are prefilled with the identity's key-file passphrase
+const [dl3] = await Promise.all([
+  page.waitForEvent('download'),
+  page.locator('button', { hasText: 'Download .json' }).click(),
+])
+await page.waitForTimeout(1500)
+const encBackup = fs.readFileSync(await dl3.path(), 'utf8')
+ok('export is JSON with keyEnc marker', (() => { try { return JSON.parse(encBackup).keyEnc.includes('PBES2') } catch { return false } })())
+ok('exported key is an encrypted PEM', encBackup.includes('-----BEGIN ENCRYPTED PRIVATE KEY-----'))
+ok('no plain seedHex in the backup', !encBackup.includes('seedHex'))
+ok('no stored passphrase leaked into the backup', !encBackup.includes('hunter2starlong'))
+// restore it back: no passphrase -> refused; wrong -> refused; right -> works
+await page.locator('textarea').first().fill(encBackup)
+await page.locator('button', { hasText: 'Restore from pasted JSON' }).click()
+await page.waitForTimeout(1200)
+ok('encrypted restore without passphrase is refused', (await page.locator('.error').last().textContent()).includes('enter the passphrase'))
+await resPassInput.fill('totally wrong pass')
+await page.locator('button', { hasText: 'Restore from pasted JSON' }).click()
+await page.waitForTimeout(1500)
+ok('wrong passphrase is refused', (await page.locator('.error').last().textContent()).includes('Wrong passphrase'))
+await resPassInput.fill('hunter2starlong')
+await page.locator('button', { hasText: 'Restore from pasted JSON' }).click()
+await page.waitForTimeout(1500)
+ok('encrypted restore with the right passphrase works', (await page.locator('.note', { hasText: 'Restored ✓' }).count()) >= 1)
+ok('restored identity is the same DID', (await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)) === didBeforeEnc)
+ok('restored identity has a working key again', await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.seedHex)))
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }
