@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (50 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (68 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -300,6 +300,31 @@ ok('scan button shows spinner while scanning', spinOk)
 await page.locator('.navtabs button').first().click()
 await page.waitForTimeout(2500)
 ok('dashboard board stats loaded', await page.locator('.stat b', { hasText: /\d/ }).count() > 0)
+
+// ---- 10. backup restore shows a busy state ----
+console.log('10. backup restore')
+await page.locator('.navtabs button', { hasText: 'Backup' }).click()
+await page.waitForTimeout(300)
+// a valid backup payload built from the live state
+const backupJson = await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('flop-toolkit-v1'))
+  return JSON.stringify({ app: 'flop-toolkit', version: 1, exportedAt: new Date().toISOString(), state: s })
+})
+await page.locator('textarea').first().fill(backupJson)
+const restoreBtn = page.locator('button', { hasText: 'Restore from pasted JSON' })
+let restoreBusy = false
+try {
+  await restoreBtn.click()
+  // NB: the button's own label changes to 'Restoring…', so query the DOM directly
+  restoreBusy = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Restoring'))
+    return Boolean(b && b.querySelector('.spin'))
+  })
+} catch { restoreBusy = false }
+ok('restore button shows spinner while restoring', restoreBusy)
+await page.waitForTimeout(1200)
+ok('restore completes (Restored ✓)', (await page.locator('.note', { hasText: 'Restored ✓' }).count()) === 1)
+ok('state survives the round-trip (identity back)', await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity)))
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }

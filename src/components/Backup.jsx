@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useStore, backupPayload, parseBackup, cookiesRead, cookiesWrite, cookiesClear } from '../lib/store.jsx'
+import { BtnSpin } from './Retry.jsx'
 
 export default function Backup() {
   const store = useStore()
@@ -8,6 +9,8 @@ export default function Backup() {
   const [err, setErr] = useState('')
   const [pasted, setPasted] = useState('')
   const [wipeStage, setWipeStage] = useState(0)
+  const [busyKey, setBusyKey] = useState('') // 'file' | 'paste' | 'cookies'
+  const busy = Boolean(busyKey)
 
   const say = (m) => { setFlash(m); setErr('') }
 
@@ -34,23 +37,59 @@ export default function Backup() {
     }
   }
 
-  const doRestore = (text) => {
-    try {
-      const { state } = parseBackup(text)
-      if (!confirm('Replace everything in this browser with the backup?')) return
-      store.replaceState(state)
-      say('Restored ✓')
-      setPasted('')
-    } catch (e) {
-      setErr(`Restore failed: ${e.message}`)
-    }
+  const doRestore = (text, key) => {
+    setErr(''); setFlash('')
+    setBusyKey(key)
+    // let the button paint its busy state before the (blocking) confirm dialog
+    setTimeout(() => {
+      const t0 = Date.now()
+      let msg = ''
+      try {
+        const { state } = parseBackup(text)
+        if (confirm('Replace everything in this browser with the backup?')) {
+          store.replaceState(state)
+          setPasted('')
+          msg = 'Restored ✓'
+        }
+      } catch (e) {
+        setErr(`Restore failed: ${e.message}`)
+      }
+      // hold the busy state for a beat so the click visibly reads as handled
+      const wait = Math.max(0, 350 - (Date.now() - t0))
+      setTimeout(() => { if (msg) say(msg); setBusyKey('') }, wait)
+    }, 60)
   }
 
   const onFile = async (e) => {
     const f = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file twice
     if (!f) return
-    doRestore(await f.text())
-    e.target.value = ''
+    setErr(''); setFlash('')
+    setBusyKey('file')
+    try {
+      doRestore(await f.text(), 'file')
+    } catch (e2) {
+      setErr(`Could not read ${f.name}: ${e2.message || e2}`)
+      setBusyKey('')
+    }
+  }
+
+  const loadCookies = () => {
+    setErr(''); setFlash('')
+    setBusyKey('cookies')
+    setTimeout(() => {
+      const t0 = Date.now()
+      let msg = ''
+      const c = cookiesRead()
+      if (!c) {
+        setErr('No complete cookie snapshot found')
+      } else if (confirm('Load the cookie snapshot? It replaces current state.')) {
+        store.replaceState(c)
+        msg = 'Loaded from cookies ✓'
+      }
+      const wait = Math.max(0, 350 - (Date.now() - t0))
+      setTimeout(() => { if (msg) say(msg); setBusyKey('') }, wait)
+    }, 60)
   }
 
   const { cookieSave } = store.state.settings
@@ -83,13 +122,17 @@ export default function Backup() {
         <h3>Restore (import)</h3>
         <p className="muted small">From a backup file or pasted JSON. This replaces the current state.</p>
         <div className="row">
-          <button onClick={() => fileRef.current?.click()}>Choose file…</button>
+          <button disabled={busy} onClick={() => fileRef.current?.click()}>
+            {busyKey === 'file' ? <><BtnSpin /> Reading…</> : 'Choose file…'}
+          </button>
           <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
         </div>
         <label>…or paste backup JSON</label>
         <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder='{"app":"flop-toolkit",…}' />
         <div style={{ marginTop: 8 }}>
-          <button disabled={!pasted.trim()} onClick={() => doRestore(pasted)}>Restore from pasted JSON</button>
+          <button disabled={busy || !pasted.trim()} onClick={() => doRestore(pasted, 'paste')}>
+            {busyKey === 'paste' ? <><BtnSpin /> Restoring…</> : 'Restore from pasted JSON'}
+          </button>
         </div>
       </div>
 
@@ -108,8 +151,8 @@ export default function Backup() {
           <button onClick={() => { const n = cookiesWrite(store.state); n ? say(`Saved to ${n} cookie${n > 1 ? 's' : ''} ✓`) : setErr('Could not write cookies (blocked?)') }}>
             Save to cookies now
           </button>
-          <button onClick={() => { const c = cookiesRead(); c ? (confirm('Load the cookie snapshot? It replaces current state.') && (store.replaceState(c), say('Loaded from cookies ✓'))) : setErr('No complete cookie snapshot found') }}>
-            Load from cookies
+          <button disabled={busy} onClick={loadCookies}>
+            {busyKey === 'cookies' ? <><BtnSpin /> Loading…</> : 'Load from cookies'}
           </button>
           <button className="danger" onClick={() => { cookiesClear(); say('Cookies cleared') }}>Clear cookies</button>
         </div>
