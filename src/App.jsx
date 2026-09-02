@@ -33,6 +33,7 @@ const TABS = [
 // is on screen. Also fires a browser notification when permission is granted.
 function TaskToast({ go }) {
   const store = useStore()
+  const { t } = useI18n()
   const { autoChecks } = useContrib({ auto: false })
   const [toast, setToast] = useState(null)
   const prevIds = useRef(null)
@@ -45,16 +46,17 @@ function TaskToast({ go }) {
     const fresh = doneTasks.filter((c) => !prevIds.current.has(c.id))
     prevIds.current = cur
     if (!fresh.length) return
-    setToast({ n: fresh.length, label: fresh[0].label.split(' — ')[0].split(' (')[0] })
+    const label = t('task_' + fresh[0].id)
+    setToast({ n: fresh.length, label: label.split(' — ')[0].split(' (')[0] })
     try {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('FLOP Toolkit', {
-          body: `✓ ${fresh.length > 1 ? `${fresh.length} tasks completed` : 'Task completed'} — ${fresh[0].label.slice(0, 90)}`,
+          body: `✓ ${fresh.length > 1 ? `${fresh.length} tasks completed` : 'Task completed'} — ${label.slice(0, 90)}`,
         })
       }
     } catch { /* notifications unavailable (e.g. insecure context) */ }
-    const t = setTimeout(() => setToast(null), 7000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setToast(null), 7000)
+    return () => clearTimeout(timer)
   }, [ids]) // eslint-disable-line
 
   if (!toast) return null

@@ -3,9 +3,11 @@ import { useStore, backupPayload, parseBackup, encryptedBackup, cookiesRead, coo
 import { decryptPemToSeed, bytesToHex } from '../lib/keyfile.js'
 import { copyText } from '../lib/util.js'
 import { BtnSpin } from './Retry.jsx'
+import { useI18n } from '../lib/i18n.js'
 
 export default function Backup() {
   const store = useStore()
+  const { t } = useI18n()
   const fileRef = useRef(null)
   const [flash, setFlash] = useState('')
   const [err, setErr] = useState('')
@@ -41,12 +43,12 @@ export default function Backup() {
           a.download = `flop-toolkit-backup-${new Date().toISOString().slice(0, 10)}.json`
           a.click()
           URL.revokeObjectURL(a.href)
-          say('Encrypted backup downloaded. The key inside is protected by your passphrase — the passphrase itself is NOT in the file.')
+          say(t('bk_dl_flash'))
           store.update((s) => { s.lastBackupAt = new Date().toISOString() })
         } else {
           copyText(json).then(
-            () => say('Encrypted backup JSON copied to clipboard. The key inside is protected by your passphrase.'),
-            () => { setPasted(json); say('Clipboard blocked — the JSON is in the box on the right; copy it manually.') },
+            () => say(t('bk_copy_flash')),
+            () => { setPasted(json); say(t('bk_clip_blocked')) },
           )
         }
       } catch (e) {
@@ -73,10 +75,10 @@ export default function Backup() {
           const { encSeed, ...rest } = st.identity
           st = { ...st, identity: { ...rest, seedHex: bytesToHex(seed) } }
         }
-        if (confirm('Replace everything in this browser with the backup?')) {
+        if (confirm(t('bk_confirm'))) {
           store.replaceState(st)
           setPasted('')
-          msg = 'Restored ✓'
+          msg = t('bk_restored')
         }
       } catch (e) {
         setErr(`Restore failed: ${e.message}`)
@@ -109,10 +111,10 @@ export default function Backup() {
       let msg = ''
       const c = cookiesRead()
       if (!c) {
-        setErr('No complete cookie snapshot found')
-      } else if (confirm('Load the cookie snapshot? It replaces current state.')) {
+        setErr(t('ck_none'))
+      } else if (confirm(t('ck_confirm'))) {
         store.replaceState(c)
-        msg = 'Loaded from cookies ✓'
+        msg = t('ck_loaded')
       }
       const wait = Math.max(0, 350 - (Date.now() - t0))
       setTimeout(() => { if (msg) say(msg); setBusyKey('') }, wait)
@@ -129,7 +131,7 @@ export default function Backup() {
   return (
     <div className="grid cols-2">
       <div className="card">
-        <h3>Backup (export) <span className="muted small">— key encrypted with your passphrase</span></h3>
+        <h3>{t('bk_export_h')} <span className="muted small">{t('bk_export_sub')}</span></h3>
         <p className="muted small">
           A complete snapshot: your DID, nickname, checklist, journal, and settings — plus the
           <b> private key, encrypted</b> (PBES2: PBKDF2-SHA256 ×600k + AES-256-CBC, the same format
@@ -138,26 +140,24 @@ export default function Backup() {
         </p>
         {hasKey && (
           <>
-            <label>Backup passphrase (min 12 characters)</label>
-            <input type="password" value={expPass} onChange={(e) => setExpPass(e.target.value)} placeholder="encrypts the private key inside the backup" maxLength={256} />
-            <label>Repeat passphrase</label>
-            <input type="password" value={expPass2} onChange={(e) => setExpPass2(e.target.value)} placeholder="repeat it" maxLength={256} />
+            <label>{t('bk_pass')}</label>
+            <input type="password" value={expPass} onChange={(e) => setExpPass(e.target.value)} placeholder={t('bk_pass_ph')} maxLength={256} />
+            <label>{t('bk_pass2')}</label>
+            <input type="password" value={expPass2} onChange={(e) => setExpPass2(e.target.value)} placeholder={t('bk_pass2_ph')} maxLength={256} />
             <p className="tiny muted" style={{ margin: '6px 0 0' }}>
-              {store.state.identity?.pass
-                ? 'Prefilled with this identity’s key-file passphrase — change it here to protect the backup with a different one.'
-                : 'Choose a passphrase you will remember — a lost passphrase makes the backup’s key unrecoverable.'}
+              {store.state.identity?.pass ? t('bk_prefill_note') : t('bk_newpass_note')}
             </p>
           </>
         )}
         <div className="row" style={{ marginTop: 10 }}>
           <button className="primary" disabled={busy || (hasKey && (!expPass || !expPass2))} onClick={() => doExport('file')}>
-            {busyKey === 'export:file' ? <><BtnSpin /> Encrypting…</> : 'Download .json'}
+            {busyKey === 'export:file' ? <><BtnSpin /> {t('bk_encrypting')}</> : t('bk_download')}
           </button>
           <button disabled={busy || (hasKey && (!expPass || !expPass2))} onClick={() => doExport('copy')}>
-            {busyKey === 'export:copy' ? <><BtnSpin /> Encrypting…</> : 'Copy JSON'}
+            {busyKey === 'export:copy' ? <><BtnSpin /> {t('bk_encrypting')}</> : t('bk_copy')}
           </button>
         </div>
-        {store.state.lastBackupAt && <p className="tiny muted">Last export: {new Date(store.state.lastBackupAt).toLocaleString()}</p>}
+        {store.state.lastBackupAt && <p className="tiny muted">{t('bk_last')} {new Date(store.state.lastBackupAt).toLocaleString()}</p>}
         <div className="note warn small" style={{ marginTop: 10 }}>
           Even encrypted, treat the backup like cash: don't paste it into chat rooms or share it
           "for verification". Backups exported by older versions of this app held the key in
@@ -166,27 +166,27 @@ export default function Backup() {
       </div>
 
       <div className="card">
-        <h3>Restore (import)</h3>
-        <p className="muted small">From a backup file or pasted JSON. This replaces the current state.</p>
+        <h3>{t('bk_restore_h')}</h3>
+        <p className="muted small">{t('bk_restore_p')}</p>
         <div className="row">
           <button disabled={busy} onClick={() => fileRef.current?.click()}>
-            {busyKey === 'file' ? <><BtnSpin /> Reading…</> : 'Choose file…'}
+            {busyKey === 'file' ? <><BtnSpin /> {t('bk_reading')}</> : t('bk_choose')}
           </button>
           <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
         </div>
-        <label style={{ marginTop: 8 }}>Passphrase (needed when the backup encrypts the key)</label>
-        <input type="password" value={resPass} onChange={(e) => setResPass(e.target.value)} placeholder="passphrase the backup was exported with" maxLength={256} />
-        <label>…or paste backup JSON</label>
+        <label style={{ marginTop: 8 }}>{t('bk_res_pass')}</label>
+        <input type="password" value={resPass} onChange={(e) => setResPass(e.target.value)} placeholder={t('bk_res_pass_ph')} maxLength={256} />
+        <label>{t('bk_paste_label')}</label>
         <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder='{"app":"flop-toolkit",…}' />
         <div style={{ marginTop: 8 }}>
           <button disabled={busy || !pasted.trim()} onClick={() => doRestore(pasted, 'paste')}>
-            {busyKey === 'paste' ? <><BtnSpin /> Restoring…</> : 'Restore from pasted JSON'}
+            {busyKey === 'paste' ? <><BtnSpin /> {t('bk_restoring')}</> : t('bk_restore')}
           </button>
         </div>
       </div>
 
       <div className="card">
-        <h3>Cookie storage</h3>
+        <h3>{t('bk_cookies_h')}</h3>
         <p className="muted small">
           Your full state (keys included) can live in browser cookies, chunked under the ~4 KB per-cookie
           ceiling. This is the "save to cookie / load from cookie" mode: handy for carrying state between
@@ -194,16 +194,16 @@ export default function Backup() {
         </p>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" style={{ width: 'auto' }} checked={cookieSave} onChange={(e) => { store.setSetting('cookieSave', e.target.checked); if (e.target.checked) cookiesWrite(store.state) }} />
-          auto-save state to cookies on every change
+          {t('ck_autosave')}
         </label>
         <div className="row" style={{ marginTop: 10 }}>
-          <button onClick={() => { const n = cookiesWrite(store.state); n ? say(`Saved to ${n} cookie${n > 1 ? 's' : ''} ✓`) : setErr('Could not write cookies (blocked?)') }}>
-            Save to cookies now
+          <button onClick={() => { const n = cookiesWrite(store.state); n ? say(t('ck_saved').replace('{n}', n)) : setErr(t('ck_blocked')) }}>
+            {t('ck_save_now')}
           </button>
           <button disabled={busy} onClick={loadCookies}>
-            {busyKey === 'cookies' ? <><BtnSpin /> Loading…</> : 'Load from cookies'}
+            {busyKey === 'cookies' ? <><BtnSpin /> {t('ck_loading')}</> : t('ck_load')}
           </button>
-          <button className="danger" onClick={() => { cookiesClear(); say('Cookies cleared') }}>Clear cookies</button>
+          <button className="danger" onClick={() => { cookiesClear(); say(t('ck_cleared')) }}>{t('ck_clear')}</button>
         </div>
         {cookieInfo.count > 0 && <p className="tiny muted">Snapshot present: {cookieInfo.count} chunk(s), written {cookieInfo.at ? new Date(cookieInfo.at).toLocaleString() : 'unknown'}</p>}
         <p className="tiny muted" style={{ marginBottom: 0 }}>
@@ -213,17 +213,17 @@ export default function Backup() {
       </div>
 
       <div className="card">
-        <h3>Device & data</h3>
+        <h3>{t('bk_device_h')}</h3>
         <div className="statrow">
-          <div className="stat"><b>{(storageBytes / 1024).toFixed(1)} KB</b><span>state size</span></div>
-          <div className="stat"><b>{store.state.journal.length}</b><span>journal entries</span></div>
-          <div className="stat"><b>{store.state.identity ? 'DID ✓' : 'none'}</b><span>identity</span></div>
+          <div className="stat"><b>{(storageBytes / 1024).toFixed(1)} KB</b><span>{t('bk_state_size')}</span></div>
+          <div className="stat"><b>{store.state.journal.length}</b><span>{t('bk_journal_n')}</span></div>
+          <div className="stat"><b>{store.state.identity ? t('bk_did_yes') : t('bk_none')}</b><span>{t('bk_identity')}</span></div>
         </div>
         <p className="muted small" style={{ marginTop: 12 }}>
           Everything lives in this browser (localStorage{cookieSave ? ' + cookies' : ''}). No server, no account, no sync.
         </p>
         {wipeStage === 0 ? (
-          <button className="danger" onClick={() => setWipeStage(1)}>Wipe all data from this browser…</button>
+          <button className="danger" onClick={() => setWipeStage(1)}>{t('bk_wipe')}</button>
         ) : (
           <div className="note bad">
             <p className="small" style={{ margin: '0 0 8px' }}>
@@ -231,7 +231,7 @@ export default function Backup() {
               Without an exported backup the DID is <b>gone forever</b>.
             </p>
             <div className="row">
-              <button className="danger" onClick={() => { store.wipeAll(); setWipeStage(0); say('All local data wiped') }}>Yes, wipe everything</button>
+              <button className="danger" onClick={() => { store.wipeAll(); setWipeStage(0); say(t('bk_wiped')) }}>{t('bk_wipe_yes')}</button>
               <button onClick={() => setWipeStage(0)}>Cancel</button>
             </div>
           </div>

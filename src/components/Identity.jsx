@@ -4,8 +4,10 @@ import { didFromSeed, randomSeedHex, validateSeedHex, shortDid, hexToBytes, byte
 import { seedToPem, encryptSeedToPem, decryptPemToSeed, pemLooksEncrypted } from '../lib/keyfile.js'
 import { copyText } from '../lib/util.js'
 import { BtnSpin } from './Retry.jsx'
+import { useI18n } from '../lib/i18n.js'
 
 function KeyField({ label, value, secret = false }) {
+  const { t } = useI18n()
   const [show, setShow] = useState(!secret)
   const [copied, setCopied] = useState(false)
   const copy = () => {
@@ -20,8 +22,8 @@ function KeyField({ label, value, secret = false }) {
         {show ? value : '•'.repeat(48)}
       </div>
       <div className="row" style={{ marginTop: 6 }}>
-        <button className="small ghost" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button>
-        <button className="small ghost" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+        <button className="small ghost" onClick={() => setShow(!show)}>{show ? t('id_hide') : t('id_show')}</button>
+        <button className="small ghost" onClick={copy}>{copied ? t('id_copied') : t('id_copy')}</button>
       </div>
     </div>
   )
@@ -40,6 +42,7 @@ const safeName = (nick) => (nick || 'anon').replace(/[^a-zA-Z0-9_-]/g, '').slice
 
 export default function Identity() {
   const store = useStore()
+  const { t } = useI18n()
   const { identity } = store.state
   const [importKey_, setImportKey] = useState('')
   const [importPass, setImportPass] = useState('')
@@ -68,7 +71,7 @@ export default function Identity() {
       const seedLine = text.match(/Private key \(seed, 32 bytes hex\):\s*([0-9a-fA-F]{64})/)
       if (seedLine) {
         setImportKey(seedLine[1].toLowerCase())
-        setImportFile(`${f.name} — seed extracted`)
+        setImportFile(t('id_file_seed').replace('{f}', f.name))
       } else {
         setImportKey(text)
         setImportFile(f.name)
@@ -168,20 +171,20 @@ export default function Identity() {
     return (
       <div className="grid cols-2">
         <div className="card">
-          <h3>Create a new identity</h3>
+          <h3>{t('id_create_h')}</h3>
           <p className="muted small">
             A fresh Ed25519 key pair is generated in this browser with <code>crypto.getRandomValues</code>.
             The public half becomes your <code>did:key:z6Mk…</code> — the same identity format technocore.chat
             and the kibble board verify. Nothing is sent anywhere until you sign a message.
           </p>
-          <label>Nickname (for unsigned posts & chat)</label>
+          <label>{t('id_nick_chat')}</label>
           <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="anon" maxLength={48} />
-          <label style={{ marginTop: 10 }}>Passphrase (required, min 12 characters)</label>
-          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="encrypts your key file backup" maxLength={256} />
-          <label>Repeat passphrase</label>
-          <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder="repeat it" maxLength={256} />
+          <label style={{ marginTop: 10 }}>{t('id_pass')}</label>
+          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder={t('id_pass_ph')} maxLength={256} />
+          <label>{t('id_pass2')}</label>
+          <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder={t('id_pass2_ph')} maxLength={256} />
           <div style={{ marginTop: 14 }}>
-            <button className="primary" disabled={busy} onClick={create}>{busy ? <><BtnSpin /> Deriving…</> : 'Generate key pair'}</button>
+            <button className="primary" disabled={busy} onClick={create}>{busy ? <><BtnSpin /> {t('id_generating')}</> : t('id_generate')}</button>
           </div>
           <p className="tiny muted" style={{ margin: '8px 0 0' }}>
             The passphrase encrypts the .pem key file you download (PBES2: PBKDF2-SHA256 ×600k + AES-256-CBC).
@@ -191,7 +194,7 @@ export default function Identity() {
           {err && <div className="error">{err}</div>}
         </div>
         <div className="card">
-          <h3>Use an existing key</h3>
+          <h3>{t('id_existing_h')}</h3>
           <p className="muted small">
             Paste a 32-byte private key (64 hex characters) — or a PEM file (<code>PRIVATE KEY</code> /
             <code> ENCRYPTED PRIVATE KEY</code>, encrypted with a passphrase) — from a previous FLOP Toolkit
@@ -206,23 +209,23 @@ export default function Identity() {
               hidden
               onChange={onImportFile}
             />
-            <button className="small ghost" onClick={() => fileRef.current?.click()}>📂 Load key file…</button>
-            {importFile && <span className="tiny muted">{importFile} — review below, then Import key</span>}
+            <button className="small ghost" onClick={() => fileRef.current?.click()}>{t('id_load_file')}</button>
+            {importFile && <span className="tiny muted">{t('id_file_note').replace('{f}', importFile)}</span>}
           </div>
           <textarea
             value={importKey_}
             onChange={(e) => { setImportKey(e.target.value); setImportFile('') }}
-            placeholder="64 hex characters — or paste / load a -----BEGIN … KEY----- file"
+            placeholder={t('id_key_ph')}
             style={{ minHeight: 96 }}
           />
           {importIsPem && pemLooksEncrypted(importKey_) && (
             <>
-              <label>PEM passphrase</label>
-              <input type="password" value={importPass} onChange={(e) => setImportPass(e.target.value)} placeholder="passphrase used to encrypt the file" />
+              <label>{t('id_pem_pass')}</label>
+              <input type="password" value={importPass} onChange={(e) => setImportPass(e.target.value)} placeholder={t('id_pem_pass_ph')} />
             </>
           )}
           <div style={{ marginTop: 14 }}>
-            <button disabled={busy || !importKey_.trim()} onClick={importKey}>Import key</button>
+            <button disabled={busy || !importKey_.trim()} onClick={importKey}>{t('id_import')}</button>
           </div>
           {err && <div className="error">{err}</div>}
         </div>
@@ -241,16 +244,16 @@ export default function Identity() {
   return (
     <div className="grid cols-2">
       <div className="card">
-        <h3>Your identity <span className="muted small">— verified writes everywhere</span></h3>
-        <KeyField label="DID (public — share freely)" value={identity.did} />
-        <KeyField label="Private key (seed hex — secret!)" value={identity.seedHex} secret />
-        <h3 style={{ marginTop: 22 }}>Download the key</h3>
+        <h3>{t('id_your_h')} <span className="muted small">{t('id_your_sub')}</span></h3>
+        <KeyField label={t('id_did_label')} value={identity.did} />
+        <KeyField label={t('id_seed_label')} value={identity.seedHex} secret />
+        <h3 style={{ marginTop: 22 }}>{t('id_dl_h')}</h3>
         {identity.pass ? (
           <>
             <div className="row">
-              <button className="small primary" disabled={busy} onClick={() => downloadPemEnc(identity.pass)}>{busy ? <><BtnSpin /> Deriving…</> : 'Download encrypted .pem'}</button>
-              <button className="small ghost" onClick={downloadTxt}>plain .txt</button>
-              <button className="small ghost" onClick={downloadPem}>plain .pem</button>
+              <button className="small primary" disabled={busy} onClick={() => downloadPemEnc(identity.pass)}>{busy ? <><BtnSpin /> {t('id_generating')}</> : t('id_dl_enc')}</button>
+              <button className="small ghost" onClick={downloadTxt}>{t('id_dl_txt')}</button>
+              <button className="small ghost" onClick={downloadPem}>{t('id_dl_pem')}</button>
             </div>
             <p className="tiny muted" style={{ margin: '8px 0 0' }}>
               Encrypted with the passphrase you set when creating this identity (PBES2: PBKDF2-SHA256
@@ -262,19 +265,19 @@ export default function Identity() {
         ) : (
           <>
             <div className="row">
-              <button className="small" onClick={downloadTxt}>Download .txt</button>
-              <button className="small" onClick={downloadPem}>Download .pem</button>
+              <button className="small" onClick={downloadTxt}>{t('id_dl_txt2')}</button>
+              <button className="small" onClick={downloadPem}>{t('id_dl_pem2')}</button>
             </div>
             <p className="tiny muted" style={{ margin: '8px 0 0' }}>
               The .txt holds the raw seed hex; the .pem is a standard PKCS#8 Ed25519 private key — the same
               format <code>openssl</code>, <code>ssh-keygen</code>-adjacent tooling and most wallets use. Named
               <code> {safeName(identity.nick)}-identity.txt / .pem</code>.
             </p>
-            <label style={{ marginTop: 14 }}>Encrypt the PEM with a passphrase (min 12 characters)</label>
+            <label style={{ marginTop: 14 }}>{t('id_enc_label')}</label>
             <div className="row">
-              <input type="password" style={{ maxWidth: 200 }} placeholder="passphrase (min 12 chars)" value={pass} onChange={(e) => setPass(e.target.value)} />
-              <input type="password" style={{ maxWidth: 200 }} placeholder="repeat passphrase" value={pass2} onChange={(e) => setPass2(e.target.value)} />
-              <button className="small" disabled={busy || !pass} onClick={() => downloadPemEnc()}>{busy ? <><BtnSpin /> Deriving…</> : 'Download encrypted .pem'}</button>
+              <input type="password" style={{ maxWidth: 200 }} placeholder={t('id_pass_min_ph')} value={pass} onChange={(e) => setPass(e.target.value)} />
+              <input type="password" style={{ maxWidth: 200 }} placeholder={t('id_pass2_ph')} value={pass2} onChange={(e) => setPass2(e.target.value)} />
+              <button className="small" disabled={busy || !pass} onClick={() => downloadPemEnc()}>{busy ? <><BtnSpin /> {t('id_generating')}</> : t('id_dl_enc')}</button>
             </div>
             <p className="tiny muted" style={{ margin: '8px 0 0' }}>
               Encrypted with PBES2 — PBKDF2-HMAC-SHA256 (600,000 rounds) + AES-256-CBC — decrypted by any OpenSSL:
@@ -290,32 +293,32 @@ export default function Identity() {
             className="small danger"
             onClick={() => { if (confirm('Remove the identity from this browser? Export a backup first if you have not.')) { store.clearIdentity(); store.addJournal('identity', 'Removed DID from this browser') } }}
           >
-            Remove from this browser
+            {t('id_remove')}
           </button>
         </div>
       </div>
       <div className="card">
-        <h3>Nickname</h3>
+        <h3>{t('id_nick')}</h3>
         <p className="muted small">
           Used for unsigned posts. Signed messages always display your DID fingerprint instead —
           <code>~nick</code> means self-asserted, a <code>z6Mk…</code> means key-verified.
         </p>
-        <label>Nickname</label>
+        <label>{t('id_nick')}</label>
         <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={48} />
         <div style={{ marginTop: 10 }}>
-          <button onClick={() => { store.setNick(nick.trim() || 'anon'); store.addJournal('identity', `Nickname set to "${nick.trim()}"`) }}>Save</button>
+          <button onClick={() => { store.setNick(nick.trim() || 'anon'); store.addJournal('identity', `Nickname set to "${nick.trim()}"`) }}>{t('id_save')}</button>
         </div>
-        <h3 style={{ marginTop: 22 }}>How signing works here</h3>
+        <h3 style={{ marginTop: 22 }}>{t('id_how_h')}</h3>
         <p className="muted small">
           For every signed write this app builds the canonical string
           <code> room|nonce|text</code> (text after technocore's single-line sweep), signs it with your
           Ed25519 key, and POSTs <code>{'{did, sig, nonce, text}'}</code> to technocore.chat. The nonce is a
           millisecond clock that only ever increases, so captured URLs can't be replayed against you.
         </p>
-        <h3 style={{ marginTop: 22 }}>Verify signing works</h3>
+        <h3 style={{ marginTop: 22 }}>{t('id_verify_h')}</h3>
         <div className="row">
           <button className="small primary" onClick={selfTest}>
-            {store.state.signVerifiedAt ? '↻ Run signing self-test again' : 'Run signing self-test'}
+            {store.state.signVerifiedAt ? t('id_selftest_again') : t('id_selftest')}
           </button>
           {store.state.signVerifiedAt && (
             <span className="tiny muted">last passed {new Date(store.state.signVerifiedAt).toLocaleString()}</span>

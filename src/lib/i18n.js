@@ -1,9 +1,12 @@
 // i18n.js — top-25 world languages for the UI chrome (nav tabs, topbar,
-// dashboard + tokenomics titles). Page *content* stays English; t() falls
-// back to English for any missing key. RTL languages (ar, fa, ur) flip the
+// dashboard + tokenomics titles), plus the full tab UI strings from
+// i18n-ui.js for the "fully translated" languages (FULL_LANGS). Long
+// explanatory paragraphs and live backend data stay English; t() falls back
+// to English for any missing key. RTL languages (ar, fa, ur) flip the
 // document direction. The choice persists in settings.lang.
 import { useEffect } from 'react'
 import { useStore } from './store.jsx'
+import { UI } from './i18n-ui.js'
 
 export const LANGS = [
   { code: 'en', native: 'English', dir: 'ltr' },
@@ -486,6 +489,16 @@ const DICT = {
   },
 }
 
+// merged view: chrome strings (all 25 languages) + full UI strings (the
+// languages in i18n-ui.js); a language without UI strings falls back to
+// English for those keys — nothing is ever left untranslated.
+const MERGED = {}
+for (const code of new Set([...Object.keys(DICT), ...Object.keys(UI)])) {
+  MERGED[code] = { ...(DICT[code] || {}), ...(UI[code] || {}) }
+}
+// languages with full UI coverage (everything switches when the language does)
+export const FULL_LANGS = Object.keys(UI)
+
 export function useI18n() {
   const store = useStore()
   const lang = LANGS.some((l) => l.code === store.state.settings.lang) ? store.state.settings.lang : 'en'
@@ -496,6 +509,6 @@ export function useI18n() {
     document.documentElement.dir = entry.dir
   }, [lang, entry.dir])
 
-  const t = (key) => DICT[lang]?.[key] ?? DICT.en[key] ?? key
+  const t = (key) => MERGED[lang]?.[key] ?? MERGED.en[key] ?? key
   return { lang, setLang: (code) => store.setSetting('lang', code), t, dir: entry.dir }
 }

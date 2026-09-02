@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
+import { useI18n } from '../lib/i18n.js'
 
 const TYPE_COLORS = {
   identity: 'var(--accent)',
@@ -25,6 +26,7 @@ const CONTRIB_TYPES = [
 
 export default function Journal() {
   const store = useStore()
+  const { t } = useI18n()
   const { journal } = store.state
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
@@ -46,14 +48,14 @@ export default function Journal() {
   return (
     <div className="grid">
       <div className="card">
-        <h3>Contribution journal <span className="muted small">— every action you take in this app is logged here, plus your evidence</span></h3>
+        <h3>{t('jn_title')} <span className="muted small">{t('jn_sub')}</span></h3>
         <div className="row">
-          <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: 'auto' }} aria-label="Entry type">
-            {CONTRIB_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: 'auto' }} aria-label={t('jn_type')}>
+            {CONTRIB_TYPES.map(([v]) => <option key={v} value={v}>{t('jt_' + v)}</option>)}
           </select>
           <input
             className="grow"
-            placeholder="Title — e.g. 'Tutorial: connect an agent to technocore', 'Bug: nonce reuse on …'"
+            placeholder={t('jn_ph_title')}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && text.trim() && !url.trim()) add() }}
@@ -63,12 +65,12 @@ export default function Journal() {
           <input
             className="grow"
             style={{ maxWidth: 480 }}
-            placeholder="Public evidence URL (optional — github repo, article, post link…)"
+            placeholder={t('jn_ph_url')}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) add() }}
           />
-          <button disabled={!text.trim()} onClick={add}>Add entry</button>
+          <button disabled={!text.trim()} onClick={add}>{t('jn_add')}</button>
         </div>
         <p className="tiny muted" style={{ margin: '8px 0 0' }}>
           Evidence entries (title + public URL, attributed to your DID) are what the checklist's Phase 5
@@ -83,21 +85,21 @@ export default function Journal() {
           {journal.length > 0 && (
             <button
               className="small danger"
-              onClick={() => confirm('Clear the whole journal? (Your identity and checklist are kept)') && journal.forEach((j) => store.removeJournal(j.id))}
+              onClick={() => confirm(t('jn_clear_confirm')) && journal.forEach((j) => store.removeJournal(j.id))}
             >
-              Clear all
+              {t('jn_clear')}
             </button>
           )}
         </div>
       </div>
 
       <div className="card">
-        {journal.length === 0 && <p className="muted small">Nothing logged yet. Actions on the kibble board and chat will appear automatically; add your off-app contributions above with their URLs.</p>}
+        {journal.length === 0 && <p className="muted small">{t('jn_empty')}</p>}
         {shown.map((j) => (
           <div className="journalitem" key={j.id}>
             <div className="spread">
               <span className="when">{new Date(j.ts).toLocaleString()} · <span style={{ color: TYPE_COLORS[j.type] || 'var(--dim)' }}>{j.type}</span></span>
-              <button className="small ghost" onClick={() => store.removeJournal(j.id)} title="Delete entry">✕</button>
+              <button className="small ghost" onClick={() => store.removeJournal(j.id)} title={t('jn_delete')}>✕</button>
             </div>
             <div>{j.text}</div>
             {j.url && (

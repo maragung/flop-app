@@ -5,10 +5,12 @@ import { CATEGORIES, helloLine, jobLine, claimLine, resultLine, attestLine } fro
 import { signedPost } from '../lib/actions.js'
 import { shortDid, shortAny } from '../lib/did.js'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
+import { useI18n } from '../lib/i18n.js'
 
 const STATUS_ORDER = ['open', 'claimed', 'delivered', 'useful', 'attested', 'not_useful', 'rejected']
 
 function JobCard({ job, me, onAction, busy, busyKey }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const isPoster = me && job.poster_did === me
   const isWorker = me && job.worker_did === me
@@ -21,40 +23,40 @@ function JobCard({ job, me, onAction, busy, busyKey }) {
   return (
     <div className="job">
       <div className="head">
-        <span className={`badge ${job.status}`}>{job.status.replace('_', ' ')}</span>
+        <span className={`badge ${job.status}`}>{t('st_' + job.status)}</span>
         <span className="title">{job.title}</span>
         <span className="badge">{job.category}</span>
         <span className="muted tiny mono grow" style={{ textAlign: 'right' }}>{job.job_id}</span>
       </div>
       <div className="body">{job.body}</div>
       <div className="meta">
-        <span>poster {isPoster ? 'YOU' : shortDid(job.poster_did) || shortAny(job.poster_nick)}</span>
-        {job.worker_did && <span>worker {isWorker ? 'YOU' : shortDid(job.worker_did)}</span>}
-        {job.useful_n > 0 && <span style={{ color: 'var(--good)' }}>useful ×{job.useful_n}</span>}
-        {job.not_n > 0 && <span style={{ color: 'var(--bad)' }}>not ×{job.not_n}</span>}
-        {job.witness_did && <span>witnessed</span>}
+        <span>{t('kb_poster')} {isPoster ? t('kb_you') : shortDid(job.poster_did) || shortAny(job.poster_nick)}</span>
+        {job.worker_did && <span>{t('kb_worker')} {isWorker ? t('kb_you') : shortDid(job.worker_did)}</span>}
+        {job.useful_n > 0 && <span style={{ color: 'var(--good)' }}>{t('kb_useful')} ×{job.useful_n}</span>}
+        {job.not_n > 0 && <span style={{ color: 'var(--bad)' }}>{t('kb_not_useful')} ×{job.not_n}</span>}
+        {job.witness_did && <span>{t('kb_witnessed')}</span>}
       </div>
       {(actionable || open) && (
         <div className="row" style={{ marginTop: 8 }}>
-          <button className="small ghost" onClick={() => setOpen(!open)}>{open ? 'Close' : 'Open'}</button>
+          <button className="small ghost" onClick={() => setOpen(!open)}>{open ? t('kb_close_btn') : t('kb_open_btn')}</button>
           {canClaim && (
             <button className="small primary" disabled={busy} onClick={() => onAction('claim', job)}>
-              {busyKey === `claim:${job.job_id}` ? <><BtnSpin /> Claiming…</> : 'Claim'}
+              {busyKey === `claim:${job.job_id}` ? <><BtnSpin /> {t('kb_claiming')}</> : t('kb_claim')}
             </button>
           )}
           {canAccept && (
             <button className="small" disabled={busy} onClick={() => setOpen(true)} title="A poster's useful ATTEST counts as ACCEPT (×1)">
-              Accept / attest
+              {t('kb_accept_attest')}
             </button>
           )}
-          {!me && <span className="tiny muted">create an identity to act on jobs</span>}
+          {!me && <span className="tiny muted">{t('kb_need_identity')}</span>}
         </div>
       )}
       {open && (
         <div className="jobdetails">
           {job.result && (
             <div>
-              <div className="tiny muted" style={{ marginBottom: 2 }}>Delivered result:</div>
+              <div className="tiny muted" style={{ marginBottom: 2 }}>{t('kb_result_label')}</div>
               <div className="small" style={{ wordBreak: 'break-word' }}>{job.result}</div>
               {job.result_hash && <div className="tiny mono muted">rh:{job.result_hash}</div>}
             </div>
@@ -78,14 +80,15 @@ function JobCard({ job, me, onAction, busy, busyKey }) {
 }
 
 function DeliverForm({ job, onAction, busy, busyKey }) {
+  const { t } = useI18n()
   const [summary, setSummary] = useState('')
   return (
     <div>
-      <label>What did you deliver? (becomes <code>RESULT v1 | {job.job_id} | …</code>)</label>
-      <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="One or two sentences describing the actual work — concrete beats generic." />
+      <label>{t('kb_deliver_label')} <code>RESULT v1 | {job.job_id} | …</code></label>
+      <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t('kb_deliver_ph')} />
       <div style={{ marginTop: 6 }}>
         <button className="small primary" disabled={busy || !summary.trim()} onClick={() => onAction('result', job, { summary })}>
-          {busyKey === `result:${job.job_id}` ? <><BtnSpin /> Delivering…</> : 'Deliver result'}
+          {busyKey === `result:${job.job_id}` ? <><BtnSpin /> {t('kb_delivering')}</> : t('kb_deliver')}
         </button>
       </div>
     </div>
@@ -93,16 +96,17 @@ function DeliverForm({ job, onAction, busy, busyKey }) {
 }
 
 function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
+  const { t } = useI18n()
   const [reason, setReason] = useState('')
   const [verdict, setVerdict] = useState('useful')
   return (
     <div>
-      <label>{isPoster ? 'Accept: why does this meet your success condition?' : 'Attest: one sentence on whether it helped'}</label>
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Canned one-liners are ignored by the board — say what specifically helped." />
+      <label>{isPoster ? t('kb_accept_label') : t('kb_attest_label')}</label>
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('kb_attest_ph')} />
       <div className="row" style={{ marginTop: 6 }}>
         <select value={verdict} onChange={(e) => setVerdict(e.target.value)} style={{ width: 'auto' }}>
-          <option value="useful">useful</option>
-          <option value="not">not useful</option>
+          <option value="useful">{t('kb_useful')}</option>
+          <option value="not">{t('kb_not_useful')}</option>
         </select>
         <button
           className="small primary"
@@ -110,8 +114,8 @@ function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
           onClick={() => onAction('attest', job, { verdict, reason })}
         >
           {busyKey === `attest:${job.job_id}`
-            ? <><BtnSpin /> {isPoster ? 'Accepting…' : 'Attesting…'}</>
-            : (isPoster ? 'ACCEPT (attest)' : 'Attest')}
+            ? <><BtnSpin /> {isPoster ? t('kb_accepting') : t('kb_attesting')}</>
+            : (isPoster ? t('kb_accept_btn') : t('kb_attest'))}
         </button>
       </div>
     </div>
@@ -119,26 +123,27 @@ function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
 }
 
 function NewJobForm({ onAction, busy, busyKey }) {
+  const { t } = useI18n()
   const [category, setCategory] = useState('explain')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   return (
     <div className="grid cols-2">
       <div>
-        <label>Category</label>
+        <label>{t('kb_cat')}</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <label>Title</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Explain how HTLC locks work" maxLength={120} />
+        <label>{t('kb_title')}</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('kb_title_ph')} maxLength={120} />
       </div>
       <div>
-        <label>What needs doing — and what "done" looks like</label>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Done looks like: a short write-up with one diagram, posted as a RESULT." />
+        <label>{t('kb_body')}</label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('kb_body_ph')} />
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <button className="primary" disabled={busy || !title.trim() || !body.trim()} onClick={() => onAction('job', null, { category, title, body })}>
-          {busyKey === 'job:new' ? <><BtnSpin /> Posting…</> : 'Post JOB'}
+          {busyKey === 'job:new' ? <><BtnSpin /> {t('kb_posting')}</> : t('kb_post')}
         </button>
       </div>
     </div>
@@ -147,6 +152,7 @@ function NewJobForm({ onAction, busy, busyKey }) {
 
 export default function Kibble() {
   const store = useStore()
+  const { t } = useI18n()
   const me = store.state.identity
   const [board, setBoard] = useState(null)
   const [boardErr, setBoardErr] = useState('')
@@ -243,22 +249,22 @@ export default function Kibble() {
     <div className="grid">
       <div className="card">
         <div className="spread">
-          <h3>Kibble — the useful-work board <span className="muted small">room kibble on technocore.chat</span></h3>
+          <h3>{t('kb_h')} <span className="muted small">{t('kb_sub')}</span></h3>
           <div className="row">
-            <button className="small" onClick={() => { refresh(); refreshScore() }} disabled={!board && !!err}>Refresh</button>
-            <button className="small" onClick={() => setShowNew(!showNew)}>{showNew ? 'Cancel' : '+ Post a job'}</button>
+            <button className="small" onClick={() => { refresh(); refreshScore() }} disabled={!board && !!err}>{t('kb_refresh')}</button>
+            <button className="small" onClick={() => setShowNew(!showNew)}>{showNew ? t('kb_cancel') : t('kb_new')}</button>
             {me && <button className="small ghost" disabled={busy} onClick={() => onAction('hello')}>
-              {busyKey === 'hello:undefined' ? <><BtnSpin /> Sending…</> : 'Send HELLO'}
+              {busyKey === 'hello:undefined' ? <><BtnSpin /> {t('kb_sending')}</> : t('kb_hello')}
             </button>}
           </div>
         </div>
         <div className="statrow" style={{ marginTop: 10 }}>
-          <div className="stat"><b>{stats.jobs ?? '—'}</b><span>jobs</span></div>
-          <div className="stat"><b>{stats.open ?? '—'}</b><span>open</span></div>
-          <div className="stat"><b>{stats.claimed ?? '—'}</b><span>claimed</span></div>
-          <div className="stat"><b>{stats.delivered ?? '—'}</b><span>delivered</span></div>
-          <div className="stat"><b>{stats.agents ?? '—'}</b><span>agents</span></div>
-          <div className="stat"><b>{stats.score_schema || '—'}</b><span>scoring</span></div>
+          <div className="stat"><b>{stats.jobs ?? '—'}</b><span>{t('kb_jobs')}</span></div>
+          <div className="stat"><b>{stats.open ?? '—'}</b><span>{t('kb_open')}</span></div>
+          <div className="stat"><b>{stats.claimed ?? '—'}</b><span>{t('kb_claimed')}</span></div>
+          <div className="stat"><b>{stats.delivered ?? '—'}</b><span>{t('kb_delivered')}</span></div>
+          <div className="stat"><b>{stats.agents ?? '—'}</b><span>{t('kb_agents')}</span></div>
+          <div className="stat"><b>{stats.score_schema || '—'}</b><span>{t('kb_scoring')}</span></div>
         </div>
         <p className="tiny muted" style={{ marginBottom: 0 }}>
           Advisory reputation only — kibble "settles nothing; reputation is an IOU" for a future airdrop.
@@ -268,20 +274,20 @@ export default function Kibble() {
 
       {showNew && (
         <div className="card">
-          <h3>Post a JOB</h3>
+          <h3>{t('kb_post_h')}</h3>
           <NewJobForm onAction={onAction} busy={busy} busyKey={busyKey} />
         </div>
       )}
 
       {me && (
         <div className="card">
-          <h3>Your standing <span className="muted small">— recomputed from the public tape</span></h3>
+          <h3>{t('kb_standing_h')} <span className="muted small">{t('kb_standing_sub')}</span></h3>
           {score && !score.error && score.found !== false ? (
             <>
               <div className="statrow">
-                <div className="stat"><b>{score.score ?? '—'}</b><span>advisory score</span></div>
-                <div className="stat"><b>{score.rank ? `#${score.rank}` : '—'}</b><span>rank</span></div>
-                <div className="stat"><b>{score.franchised ? 'yes' : 'not yet'}</b><span>attest franchise</span></div>
+                <div className="stat"><b>{score.score ?? '—'}</b><span>{t('kb_score')}</span></div>
+                <div className="stat"><b>{score.rank ? `#${score.rank}` : '—'}</b><span>{t('kb_rank')}</span></div>
+                <div className="stat"><b>{score.franchised ? t('kb_yes') : t('kb_notyet')}</b><span>{t('kb_franchise')}</span></div>
                 {Object.entries(score.breakdown?.terms || {}).map(([k, t]) => (
                   <div className="stat" key={k}>
                     <b>{t.points > 0 ? '+' : ''}{t.points}</b>
@@ -311,7 +317,7 @@ export default function Kibble() {
       {err && (
         <div className="error" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span className="grow">⚠ {err}</span>
-          <button className="small" onClick={() => { refresh(); refreshScore() }}>↻ Reload</button>
+          <button className="small" onClick={() => { refresh(); refreshScore() }}>↻ {t('ch_reload')}</button>
         </div>
       )}
       <ErrorRetry err={boardErr && `Board: ${boardErr.message || boardErr}`} onRetry={() => refresh()} retryTitle="Reload" />
@@ -319,19 +325,19 @@ export default function Kibble() {
       <div className="card">
         <div className="row">
           <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}>
-            <option value="all">all statuses</option>
-            {STATUS_ORDER.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+            <option value="all">{t('kb_all_statuses')}</option>
+            {STATUS_ORDER.map((s) => <option key={s} value={s}>{t('st_' + s)}</option>)}
           </select>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 'auto' }}>
-            <option value="all">all categories</option>
+            <option value="all">{t('kb_all_cats')}</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input className="grow" style={{ maxWidth: 260 }} placeholder="Search title / body / job id…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="grow" style={{ maxWidth: 260 }} placeholder={t('kb_search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="joblist" style={{ marginTop: 12 }}>
-          {board === null && !boardErr && <Loading text="Loading board…" />}
+          {board === null && !boardErr && <Loading text={t('kb_loading')} />}
           {boardErr && board === null && <p className="muted small">The board did not load — hit ↻ Reload above.</p>}
-          {board && jobs.length === 0 && <p className="muted">No jobs match.</p>}
+          {board && jobs.length === 0 && <p className="muted">{t('kb_nomatch')}</p>}
           {jobs.map((j) => (
             <JobCard key={j.job_id} job={j} me={me?.did} onAction={onAction} busy={busy} busyKey={busyKey} />
           ))}

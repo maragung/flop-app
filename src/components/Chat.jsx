@@ -5,6 +5,7 @@ import { parseLine } from '../lib/kibble.js'
 import { signedPost, unsignedPost } from '../lib/actions.js'
 import { shortAny } from '../lib/did.js'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
+import { useI18n } from '../lib/i18n.js'
 
 const SUGGESTED = ['lobby', 'kibble', 'technocore', 'flop', 'validators', 'meta']
 
@@ -29,6 +30,7 @@ function MessageLine({ m }) {
 
 export default function Chat() {
   const store = useStore()
+  const { t } = useI18n()
   const { identity, chat } = store.state
   const [room, setRoom] = useState(chat.lastRoom || 'lobby')
   const [msgs, setMsgs] = useState([])
@@ -86,18 +88,18 @@ export default function Chat() {
 
   const send = async () => {
     setErr(''); setFlash(''); setBusy(true)
-    const t = text.trim()
-    if (!t) return setBusy(false)
+    const msg = text.trim()
+    if (!msg) return setBusy(false)
     try {
       if (sign && identity) {
-        await signedPost(store, room, t)
-        setFlash('Sent ✓ (signed)')
+        await signedPost(store, room, msg)
+        setFlash(t('ch_sent_signed'))
       } else {
         const nick = store.state.chat.nick || 'anon'
-        await unsignedPost(store, room, t)
-        setFlash(`Sent ✓ (unsigned as ~${nick})`)
+        await unsignedPost(store, room, msg)
+        setFlash(t('ch_sent_unsigned').replace('{nick}', nick))
       }
-      store.addJournal('chat', `${room}: ${t.slice(0, 180)}`)
+      store.addJournal('chat', `${room}: ${msg.slice(0, 180)}`)
       setText('')
       setTimeout(() => load(false), 1500)
     } catch (e) {
@@ -115,13 +117,13 @@ export default function Chat() {
     <div className="grid chatwrap">
       <div className="card">
         <div className="spread">
-          <h3>Agent chat <span className="muted small">— technocore.chat rooms</span></h3>
+          <h3>{t('ch_h')} <span className="muted small">{t('ch_sub')}</span></h3>
           <div className="row">
             <label style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
               <input type="checkbox" style={{ width: 'auto' }} checked={auto} onChange={(e) => setAuto(e.target.checked)} />
-              auto-poll
+              {t('ch_autopoll')}
             </label>
-            <button className="small" onClick={() => load(true)}>Reload</button>
+            <button className="small" onClick={() => load(true)}>{t('ch_reload')}</button>
           </div>
         </div>
         <div className="roompick" style={{ marginTop: 8 }}>
@@ -136,12 +138,12 @@ export default function Chat() {
           <input
             className="grow"
             style={{ maxWidth: 280 }}
-            placeholder="go to room… (e.g. gpu_mempool)"
+            placeholder={t('ch_room_ph')}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && custom.trim() && switchRoom(custom.trim())}
           />
-          <button className="small" onClick={() => custom.trim() && switchRoom(custom.trim())}>Go</button>
+          <button className="small" onClick={() => custom.trim() && switchRoom(custom.trim())}>{t('ch_go')}</button>
         </div>
         {rooms.find((r) => r.name === room)?.topic && (
           <p className="tiny muted" style={{ marginBottom: 0, marginTop: 8 }}>
@@ -174,28 +176,28 @@ export default function Chat() {
         {identity ? (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input type="checkbox" style={{ width: 'auto' }} checked={sign} onChange={(e) => setSign(e.target.checked)} />
-            sign as my DID ({identity.did.slice(0, 20)}…)
+            {t('ch_sign_as')} ({identity.did.slice(0, 20)}…)
           </label>
         ) : (
           <p className="tiny muted">No identity — posting unsigned as your nickname. Create a key in the Identity tab to sign.</p>
         )}
         {!sign && (
           <>
-            <label>Nickname</label>
+            <label>{t('ch_nick')}</label>
             <input value={chat.nick} onChange={(e) => store.setNick(e.target.value)} maxLength={48} />
           </>
         )}
-        <label>Message (single line, max 4096 chars — control characters are swept to spaces)</label>
+        <label>{t('ch_msg_label')}</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send() }}
-          placeholder={`Say something to /r/${room}…`}
+          placeholder={t('ch_msg_ph').replace('{room}', room)}
         />
         <div className="spread" style={{ marginTop: 8 }}>
           <span className="tiny muted">{text.length}/4096 · same text reposted within a few seconds is refused (422) — rephrase instead</span>
           <button className="primary" disabled={busy || !text.trim()} onClick={send}>
-            {busy ? <><BtnSpin /> Sending…</> : 'Send'}
+            {busy ? <><BtnSpin /> {t('ch_sending')}</> : t('ch_send')}
           </button>
         </div>
       </div>

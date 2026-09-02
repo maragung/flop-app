@@ -5,6 +5,7 @@ import { taskDone } from '../lib/contrib.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { shortDid } from '../lib/did.js'
+import { useI18n } from '../lib/i18n.js'
 
 const TRACKS = [
   {
@@ -28,6 +29,8 @@ const TRACKS = [
 ]
 
 function TaskRow({ task, go, store, autoChecks }) {
+  const { t } = useI18n()
+  const label = t('task_' + task.id)
   const { checklist } = store.state
   const manual = checklist[task.id]?.done
   const auto = task.auto ? autoChecks[task.auto] : null
@@ -37,7 +40,7 @@ function TaskRow({ task, go, store, autoChecks }) {
   const recordEvidence = () => {
     const u = url.trim()
     if (!u) return
-    store.addJournal('evidence', `${task.label}${u.startsWith('http') ? '' : ' — ' + u}`, u.startsWith('http') ? u : '')
+    store.addJournal('evidence', `${label}${u.startsWith('http') ? '' : ' — ' + u}`, u.startsWith('http') ? u : '')
     if (!done) store.toggleCheck(task.id)
     setUrl('')
   }
@@ -45,7 +48,7 @@ function TaskRow({ task, go, store, autoChecks }) {
   return (
     <div className={`checkitem ${done ? 'is-done' : ''}`}>
       {task.auto ? (
-        <span className={`autodot ${auto?.done ? 'on' : ''}`} title={auto?.done ? 'Auto-detected' : 'Not detected yet'} aria-hidden="true">
+        <span className={`autodot ${auto?.done ? 'on' : ''}`} title={auto?.done ? t('gd_autodet') : t('gd_notdet')} aria-hidden="true">
           {auto?.done ? '✓' : '○'}
         </span>
       ) : (
@@ -53,38 +56,38 @@ function TaskRow({ task, go, store, autoChecks }) {
           type="checkbox"
           checked={Boolean(manual)}
           onChange={() => store.toggleCheck(task.id)}
-          aria-label={task.label}
+          aria-label={label}
         />
       )}
       <span className="small grow">
         {task.hi && <span className="pri" title="High priority">★</span>}{' '}
         {task.tab ? (
-          <button className="linkbtn" title="Go do it" onClick={() => go(task.tab)}>{task.label} →</button>
+          <button className="linkbtn" title="Go do it" onClick={() => go(task.tab)}>{label} →</button>
         ) : task.url ? (
-          <a href={task.url} target="_blank" rel="noreferrer">{task.label} ↗</a>
-        ) : task.label}
+          <a href={task.url} target="_blank" rel="noreferrer">{label} ↗</a>
+        ) : label}
         {task.auto && <span className="tiny muted" style={{ display: 'block', marginLeft: 2 }}>{auto?.done ? `✓ auto: ${auto.detail}` : auto?.detail}</span>}
         {task.evidence && !done && (
           <span className="row" style={{ marginTop: 4 }}>
             <input
               className="tiny"
               style={{ maxWidth: 320, padding: '4px 8px' }}
-              placeholder="evidence URL (github, article, post…)"
+              placeholder={t('gd_ev_ph')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && recordEvidence()}
             />
-            <button className="small ghost" disabled={!url.trim()} onClick={recordEvidence}>record</button>
+            <button className="small ghost" disabled={!url.trim()} onClick={recordEvidence}>{t('gd_record')}</button>
           </span>
         )}
         {task.evidence && done && checklist[task.id]?.done && (
           <span className="tiny muted" style={{ display: 'block', marginLeft: 2 }}>
-            evidence lives in the <button className="linkbtn" onClick={() => go('journal')}>journal →</button>
+            {t('gd_ev_note')} <button className="linkbtn" onClick={() => go('journal')}>{t('gd_journal_link')}</button>
           </span>
         )}
       </span>
       <span className={`badge ${done ? 'useful' : ''}`} title={auto?.done ? 'Detected automatically from live data' : manual ? 'Marked done by you' : 'Not done yet'}>
-        {done ? (auto?.done ? '✓ auto' : '✓ done') : 'todo'}
+        {done ? (auto?.done ? t('gd_b_auto') : t('gd_b_done')) : t('gd_b_todo')}
       </span>
     </div>
   )
@@ -92,6 +95,7 @@ function TaskRow({ task, go, store, autoChecks }) {
 
 export default function Guide({ go }) {
   const store = useStore()
+  const { t } = useI18n()
   const { identity, checklist } = store.state
   const { autoChecks, scanning, scanErr, scan, activity } = useContrib({ auto: true })
 
@@ -106,7 +110,7 @@ export default function Guide({ go }) {
   return (
     <div className="grid">
       <div className="card">
-        <h3>The only facts that matter (from flop.finance's own teaser, v0.1 draft, updated 2026-08-26)</h3>
+        <h3>{t('gd_facts_h')}</h3>
         <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
           <li>Genesis airdrop: <b>3,500,000,000 $FLOP</b> = 20.4% of year-10 supply. No token sale, no investor allocation, 100% fair launch.</li>
           <li>It is earned through <b>testnet participation</b> — testnet planned <b>Q4 2026</b>, runs ~90 days, mainnet <b>Q1 2027</b>.</li>
@@ -123,7 +127,7 @@ export default function Guide({ go }) {
       {/* ---- the contribution engine ---- */}
       <div className="card">
         <div className="spread">
-          <h3>My Contribution tracker <span className="muted small">— tasks tick themselves when the work is real</span></h3>
+          <h3>{t('gd_tracker_h')} <span className="muted small">{t('gd_tracker_sub')}</span></h3>
           <span className="badge">{doneCount}/{CONTRIB_TASKS.length} · {pct}%</span>
         </div>
         <div className="progressbar" style={{ margin: '8px 0 4px' }}><div style={{ width: `${pct}%` }} /></div>
@@ -137,12 +141,12 @@ export default function Guide({ go }) {
         {identity ? (
           <div className="row" style={{ marginBottom: 8 }}>
             <button className="small primary" disabled={scanning} onClick={() => scan()}>
-              {scanning ? <><BtnSpin /> Scanning…</> : activity ? '↻ Re-scan my live activity' : 'Scan my live activity'}
+              {scanning ? <><BtnSpin /> {t('gd_scanning')}</> : activity ? t('gd_rescan') : t('gd_scan')}
             </button>
-            {activity && <span className="tiny muted">last scan {new Date(activity.at).toLocaleString()} · {activity.scan?.roomsPosted?.length || 0} room(s) with your posts</span>}
+            {activity && <span className="tiny muted">{t('gd_last_scan').replace('{at}', new Date(activity.at).toLocaleString()).replace('{n}', activity.scan?.roomsPosted?.length || 0)}</span>}
           </div>
         ) : (
-          <p className="small muted" style={{ margin: '0 0 8px' }}>Create an identity first — then the scan can verify your on-chain work. <button className="linkbtn" onClick={() => go('identity')}>Identity tab →</button></p>
+          <p className="small muted" style={{ margin: '0 0 8px' }}>Create an identity first — then the scan can verify your on-chain work. <button className="linkbtn" onClick={() => go('identity')}>{t('gd_identity_link')}</button></p>
         )}
 
         {scanning && <Loading text="Reading your recent messages in lobby, kibble, technocore, flop, validators, meta…" />}
@@ -150,19 +154,19 @@ export default function Guide({ go }) {
 
         {activity?.scan && (
           <div className="statrow" style={{ margin: '4px 0 10px' }}>
-            <div className="stat"><b>{activity.scan.signedPosts}</b><span>signed posts</span></div>
-            <div className="stat"><b>{activity.scan.verifiedSigs}</b><span>sig re-verified</span></div>
-            <div className="stat"><b>{activity.scan.roomsPosted.length}</b><span>rooms active</span></div>
-            <div className="stat"><b>{activity.scan.replies}</b><span>replies</span></div>
-            <div className="stat"><b>{activity.scan.answers}</b><span>answers</span></div>
-            <div className="stat"><b>{activity.scan.activeDays}</b><span>active days</span></div>
+            <div className="stat"><b>{activity.scan.signedPosts}</b><span>{t('gd_posts')}</span></div>
+            <div className="stat"><b>{activity.scan.verifiedSigs}</b><span>{t('gd_sigs')}</span></div>
+            <div className="stat"><b>{activity.scan.roomsPosted.length}</b><span>{t('gd_rooms')}</span></div>
+            <div className="stat"><b>{activity.scan.replies}</b><span>{t('gd_replies')}</span></div>
+            <div className="stat"><b>{activity.scan.answers}</b><span>{t('gd_answers')}</span></div>
+            <div className="stat"><b>{activity.scan.activeDays}</b><span>{t('gd_days')}</span></div>
           </div>
         )}
 
         {nextUp.length > 0 && (
           <div className="note" style={{ marginBottom: 10 }}>
-            <b>Do these next:</b> {nextUp.map((t, i) => (
-              <span key={t.id}>{i > 0 && ' · '}{t.label.split(' — ')[0].split(' (')[0]}</span>
+            <b>{t('gd_next')}</b> {nextUp.map((n, i) => (
+              <span key={n.id}>{i > 0 && ' · '}{t('task_' + n.id).split(' — ')[0].split(' (')[0]}</span>
             ))}
           </div>
         )}
@@ -173,7 +177,7 @@ export default function Guide({ go }) {
           return (
             <div key={ph.id} style={{ marginBottom: 6 }}>
               <div className="spread" style={{ margin: '10px 0 0' }}>
-                <div className="tiny muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>{ph.name}</div>
+                <div className="tiny muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>{t('phase_' + ph.id)}</div>
                 <span className="tiny muted mono">{done}/{items.length}</span>
               </div>
               <div className="progressbar" style={{ height: 5, margin: '4px 0 2px' }}>
@@ -190,13 +194,13 @@ export default function Guide({ go }) {
       {/* ---- rules of the road ---- */}
       <div className="grid cols-2">
         <div className="card">
-          <h3>The quality bar <span className="muted small">— every contribution should be</span></h3>
+          <h3>{t('gd_quality_h')} <span className="muted small">{t('gd_quality_sub')}</span></h3>
           <div className="row" style={{ gap: 6 }}>
-            {QUALITY_BAR.map((q) => <span className="badge" key={q} style={{ borderColor: 'var(--accent)' }}>{q}</span>)}
+            {QUALITY_BAR.map((q, i) => <span className="badge" key={q} style={{ borderColor: 'var(--accent)' }}>{t('qb_' + (i + 1))}</span>)}
           </div>
-          <h3 style={{ marginTop: 16 }}>Never do this</h3>
+          <h3 style={{ marginTop: 16 }}>{t('gd_never_h')}</h3>
           <ul className="small muted" style={{ paddingLeft: 18, margin: 0 }}>
-            {DO_NOT.map((d) => <li key={d} style={{ marginBottom: 3 }}>{d}</li>)}
+            {DO_NOT.map((d, i) => <li key={d} style={{ marginBottom: 3 }}>{t('donot_' + (i + 1))}</li>)}
           </ul>
           <p className="tiny muted" style={{ marginBottom: 0, marginTop: 8 }}>
             Completing tasks guarantees nothing unless the official team confirms eligibility criteria.
@@ -204,17 +208,18 @@ export default function Guide({ go }) {
           </p>
         </div>
         <div className="card">
-          <h3>FLOP airdrop extras <span className="muted small">— from flop.finance · {extrasDone}/{FLOP_EXTRAS.length} done</span></h3>
+          <h3>{t('gd_extras_h')} <span className="muted small">{t('gd_extras_sub').replace('{n}', extrasDone).replace('{m}', FLOP_EXTRAS.length)}</span></h3>
           {FLOP_EXTRAS.map((c) => {
             const done = Boolean(checklist[c.id]?.done)
+            const label = t('extra_' + c.id)
             return (
               <div className="checkitem" key={c.id}>
-                <input type="checkbox" checked={done} onChange={() => store.toggleCheck(c.id)} aria-label={c.label} />
+                <input type="checkbox" checked={done} onChange={() => store.toggleCheck(c.id)} aria-label={label} />
                 <span className="small grow">
-                  {c.tab ? <button className="linkbtn" onClick={() => go(c.tab)}>{c.label} →</button>
-                    : c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.label} ↗</a> : c.label}
+                  {c.tab ? <button className="linkbtn" onClick={() => go(c.tab)}>{label} →</button>
+                    : c.url ? <a href={c.url} target="_blank" rel="noreferrer">{label} ↗</a> : label}
                 </span>
-                <span className={`badge ${done ? 'useful' : ''}`}>{done ? '✓ done' : 'todo'}</span>
+                <span className={`badge ${done ? 'useful' : ''}`}>{done ? t('gd_b_done') : t('gd_b_todo')}</span>
               </div>
             )
           })}
@@ -222,18 +227,18 @@ export default function Guide({ go }) {
       </div>
 
       <div className="grid cols-3">
-        {TRACKS.map((t) => (
-          <div className="card" key={t.name}>
-            <h3 style={{ color: t.color }}>{t.name} <span className="muted small">· {t.alloc}</span></h3>
-            <p className="small muted" style={{ margin: 0 }}>{t.how}</p>
-            {(t.name === 'Miners' || t.name === 'Validators') && (
+        {TRACKS.map((tr) => (
+          <div className="card" key={tr.name}>
+            <h3 style={{ color: tr.color }}>{tr.name} <span className="muted small">· {tr.alloc}</span></h3>
+            <p className="small muted" style={{ margin: 0 }}>{tr.how}</p>
+            {(tr.name === 'Miners' || tr.name === 'Validators') && (
               <p className="tiny" style={{ marginBottom: 0 }}>
-                <a href={`https://flop.finance/apply/${t.name === 'Miners' ? 'miner' : 'validator'}`} target="_blank" rel="noreferrer">
-                  Fill the {t.name === 'Miners' ? 'Miner' : 'Validator'} interest form ↗
+                <a href={`https://flop.finance/apply/${tr.name === 'Miners' ? 'miner' : 'validator'}`} target="_blank" rel="noreferrer">
+                  {tr.name === 'Miners' ? t('gd_apply_miner') : t('gd_apply_validator')}
                 </a>
               </p>
             )}
-            {t.name === 'Agents' && (
+            {tr.name === 'Agents' && (
               <p className="tiny" style={{ marginBottom: 0 }}>
                 Until testnet, the agent-flavoured practice is the kibble board: ask, do, check, attest.
               </p>

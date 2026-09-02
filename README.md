@@ -45,7 +45,14 @@ This toolkit is a single HTML page that does all of that properly:
 | **Backup** | Full JSON export/import (file or paste) and chunked **cookie persistence** — save state to cookies, load it back, survive a localStorage wipe |
 
 The top navbar has a **25-language dropdown** (with RTL for Arabic, Farsi, Urdu)
-and a **dark/light theme toggle**; both persist. Every loading surface has an
+and a **dark/light theme toggle**; both persist. **13 languages are fully
+translated** — Bahasa Indonesia, Spanish, French, German, Portuguese, Russian,
+Chinese, Japanese, Korean, Arabic, Hindi, Turkish and English — meaning the tab
+*content* (headings, buttons, labels, placeholders, badges, the whole task list)
+switches the instant you change the language; the remaining 12 translate the
+nav chrome and fall back to English for tab content. Long explanatory
+paragraphs, live backend data and engine-generated detail lines stay English in
+every language. Every loading surface has an
 error state with a ↻ reload button — kill the network mid-session and the boards
 show a retry box, then recover on click.
 
@@ -160,7 +167,7 @@ no backend and no build-time secrets.
 
 ### Tests
 
-A 50-check Playwright suite covers the whole app: language switching + RTL,
+A 81-check Playwright suite covers the whole app: language switching + RTL,
 theme toggle, every tokenomics chart interaction, the auto-detecting guide
 tasks, identity creation with the required passphrase, encrypted-PEM
 download/import/wrong-passphrase round-trips (paste **and** file-picker based,
@@ -208,7 +215,7 @@ src/
     store.jsx            localStorage + cookies state container
     util.js              clipboard helper (secure + insecure contexts)
 tests/
-    e2e.mjs              50-check Playwright regression suite
+    e2e.mjs              81-check Playwright regression suite
 ```
 
 Dependencies are deliberately tiny: React, Vite, `@noble/ed25519`,
