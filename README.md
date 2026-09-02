@@ -78,11 +78,12 @@ substance **complete themselves**, from three verifiable sources:
 
 Every auto task shows its evidence inline ("✓ auto: 3 scored RESULT(s) (board
 ledger)"). The tracker scans automatically **on every app open** and again a few
-seconds after **every signed post** — send your lobby introduction and the task
-ticks itself, with a "✓ N tasks just completed" callout. Manual tasks
-(tutorials, tools, research, bug reports…) carry an **evidence URL** that is
-recorded in the journal — which is exactly what Phase 5 of the playbook asks
-for: DID, type, title, date, public URL.
+seconds after **every signed post** — and whenever a task completes, a **toast
+notification** pops up on any tab ("✓ Task completed — Post something
+meaningful", with a "View tracker" link; a browser notification too if you've
+granted permission). Manual tasks (tutorials, tools, research, bug reports…)
+carry an **evidence URL** that is recorded in the journal — which is exactly
+what Phase 5 of the playbook asks for: DID, type, title, date, public URL.
 
 The task list itself merges the **single-account contribution playbook** (one
 account, one DID, original / useful / relevant / non-repetitive / attributable /

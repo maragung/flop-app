@@ -126,6 +126,10 @@ await page.locator('input[placeholder="repeat it"]').fill('hunter2starlong')
 await page.locator('button', { hasText: 'Generate key pair' }).click()
 await page.waitForTimeout(800)
 ok('identity created (didbadge on)', await page.locator('.didbadge.on').count() === 1)
+// creating the identity completes the 'did' task -> global toast, whatever tab is open
+await page.locator('.tasktoast').waitFor({ state: 'visible', timeout: 10000 })
+ok('task-completion toast appears', (await page.locator('.tasktoast').textContent()).includes('completed'))
+ok('toast names the completed task', (await page.locator('.tasktoast').textContent()).includes('Generate one unique DID'))
 // signing self-test -> the tracker's 'verify' task must tick itself
 await page.locator('button', { hasText: 'Run signing self-test' }).click()
 await page.waitForTimeout(400)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
 import { taskDone } from '../lib/contrib.js'
@@ -103,20 +103,6 @@ export default function Guide({ go }) {
   const nextUp = CONTRIB_TASKS.filter((t) => !taskDone(t, checklist, autoChecks)).slice(0, 3)
   const extrasDone = FLOP_EXTRAS.filter((c) => checklist[c.id]?.done).length
 
-  // celebrate live: when a re-scan (manual, or the automatic one after a signed
-  // post) completes new tasks, say so for a few seconds
-  const prevDone = useRef(doneCount)
-  const [justDone, setJustDone] = useState(0)
-  useEffect(() => {
-    if (doneCount > prevDone.current) {
-      setJustDone(doneCount - prevDone.current)
-      const t = setTimeout(() => setJustDone(0), 6000)
-      prevDone.current = doneCount
-      return () => clearTimeout(t)
-    }
-    prevDone.current = doneCount
-  }, [doneCount])
-
   return (
     <div className="grid">
       <div className="card">
@@ -141,11 +127,6 @@ export default function Guide({ go }) {
           <span className="badge">{doneCount}/{CONTRIB_TASKS.length} · {pct}%</span>
         </div>
         <div className="progressbar" style={{ margin: '8px 0 4px' }}><div style={{ width: `${pct}%` }} /></div>
-        {justDone > 0 && (
-          <div className="note" style={{ margin: '8px 0' }}>
-            ✓ {justDone} task{justDone > 1 ? 's' : ''} just completed from your live activity
-          </div>
-        )}
         <p className="tiny muted" style={{ margin: '0 0 10px' }}>
           ONE account · ONE DID · {identity ? shortDid(identity.did) : 'no identity yet'} — auto-detected tasks read
           your live room messages, the board's own score ledger and this browser's state. The tracker scans

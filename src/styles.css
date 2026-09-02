@@ -99,6 +99,15 @@ code, .mono { font-family: var(--mono); font-size: 13px; }
 .didbadge.on { color: var(--accent); border-color: var(--accent); }
 .didbadge:not(:disabled) { cursor: copy; }
 
+/* task-completion toast — appears wherever a contribution task completes */
+.tasktoast {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50;
+  max-width: 340px; padding: 12px 14px;
+  background: var(--panel); border: 1px solid var(--good); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+}
+
 .navtabs { display: flex; gap: 4px; padding: 8px 12px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); background: var(--base-2); position: sticky; top: 53px; z-index: 19; }
 .navtabs::-webkit-scrollbar { display: none; }
 .navtabs button {
@@ -411,6 +420,7 @@ html[data-theme='light'] {
   }
   .tabbar-mobile button .ico { font-size: 18px; }
   .tabbar-mobile button.active { color: var(--accent); background: var(--accent-soft); }
+  .tasktoast { right: 12px; left: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); max-width: none; }
 }
 
 /* ---- accessibility ---- */

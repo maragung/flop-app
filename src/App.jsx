@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from './lib/store.jsx'
 import { useI18n, LANGS } from './lib/i18n.js'
 import { shortDid } from './lib/did.js'
 import { copyText } from './lib/util.js'
-import { refreshActivity } from './lib/contrib.js'
+import { refreshActivity, taskDone } from './lib/contrib.js'
+import { CONTRIB_TASKS } from './lib/tasks.js'
+import { useContrib } from './lib/useContrib.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import Identity from './components/Identity.jsx'
 import Kibble from './components/Kibble.jsx'
@@ -25,6 +27,45 @@ const TABS = [
   { id: 'journal', key: 'tab_journal', ico: '✎' },
   { id: 'backup', key: 'tab_backup', ico: '⤓' },
 ]
+
+// Global toast: whenever a contribution task completes — by a background scan
+// (app open, post-signed re-scan) or a manual tick — announce it, whatever tab
+// is on screen. Also fires a browser notification when permission is granted.
+function TaskToast({ go }) {
+  const store = useStore()
+  const { autoChecks } = useContrib({ auto: false })
+  const [toast, setToast] = useState(null)
+  const prevIds = useRef(null)
+  const doneTasks = CONTRIB_TASKS.filter((c) => taskDone(c, store.state.checklist, autoChecks))
+  const ids = doneTasks.map((c) => c.id).join(',')
+
+  useEffect(() => {
+    const cur = new Set(ids ? ids.split(',') : [])
+    if (prevIds.current == null) { prevIds.current = cur; return } // baseline on first render
+    const fresh = doneTasks.filter((c) => !prevIds.current.has(c.id))
+    prevIds.current = cur
+    if (!fresh.length) return
+    setToast({ n: fresh.length, label: fresh[0].label.split(' — ')[0].split(' (')[0] })
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('FLOP Toolkit', {
+          body: `✓ ${fresh.length > 1 ? `${fresh.length} tasks completed` : 'Task completed'} — ${fresh[0].label.slice(0, 90)}`,
+        })
+      }
+    } catch { /* notifications unavailable (e.g. insecure context) */ }
+    const t = setTimeout(() => setToast(null), 7000)
+    return () => clearTimeout(t)
+  }, [ids]) // eslint-disable-line
+
+  if (!toast) return null
+  return (
+    <div className="tasktoast" role="status" aria-live="polite">
+      <b style={{ color: 'var(--good)' }}>✓ {toast.n > 1 ? `${toast.n} tasks completed` : 'Task completed'}</b>
+      <span className="small">{toast.label}{toast.n > 1 ? ` (+${toast.n - 1} more)` : ''}</span>
+      <button className="small ghost" onClick={() => { setToast(null); go('guide') }}>View tracker →</button>
+    </div>
+  )
+}
 
 // Tabs live in the URL hash (#kibble, #guide…) so a reload / shared link /
 // the back button all land on the same tab.
@@ -143,6 +184,8 @@ export default function App() {
         <span className="muted tiny">dibuat oleh</span>{' '}
         <a href="https://x.com/0xMaragung" target="_blank" rel="noreferrer">0xMaragung</a>
       </footer>
+
+      <TaskToast go={go} />
 
       <nav className="tabbar-mobile" aria-label="Sections">
         {TABS.map((x) => (
