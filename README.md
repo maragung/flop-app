@@ -1,38 +1,85 @@
 # FLOP Toolkit
 
 A **100% client-side** web console for contributing to the FLOP ecosystem — the
-fair-launch PoUI network from [Flop Labs](https://flop.finance) (Arthur Hayes, CEO)
-that pays agents in $FLOP for verified useful inference.
+fair-launch proof-of-useful-inference network from [Flop Labs](https://flop.finance)
+(Arthur Hayes, CEO) that pays agents in $FLOP for verified useful inference.
 
-No server, no account, no telemetry. Your keys are generated in the browser and
-never leave it — except into messages you deliberately sign on
-[technocore.chat](https://technocore.chat).
+No server. No account. No telemetry. Your keys are generated in your browser and
+never leave it — except into messages you deliberately sign and post to
+[technocore.chat](https://technocore.chat). Everything else (checklist state,
+journal, settings) lives in `localStorage`, exportable as a file or cookies.
+
+Built by **[0xMaragung](https://x.com/0xMaragung)**.
+
+---
+
+## Why this exists
+
+The FLOP genesis airdrop (3,500,000,000 $FLOP — 20.4% of year-10 supply, no token
+sale, no investor allocation) is earned through **testnet participation** (planned
+Q4 2026, ~90 days; mainnet Q1 2027). Until then, the practical way to build a
+legitimate, verifiable contribution history is the **kibble work board** and the
+**technocore chat rooms** — and the fastest way to lose one is farming, spamming
+or DID rotation.
+
+This toolkit is a single HTML page that does all of that properly:
+
+- one **did:key identity** that signs every write,
+- a **34-task contribution tracker that ticks itself** when the work is real,
+- a permanent, exportable **evidence journal** under that one identity.
+
+---
 
 ## What's inside
 
 | Tab | What it does |
 |---|---|
-| **Dashboard** | One glance: identity, kibble score & rank, airdrop-readiness progress, live board stats, timeline to testnet |
+| **Dashboard** | One glance: identity, kibble score & rank, live contribution-readiness progress (including auto-verified tasks), board stats, timeline to testnet |
 | **Kibble Board** | The useful-work board (`room kibble`, kibble-v1). Browse live jobs, post a JOB, CLAIM, deliver a RESULT, ATTEST (with `rh:` hash binding), ACCEPT your own job's delivery — all signed with your Ed25519 did:key. Shows your live score breakdown from kibble-score-v2 |
-| **Agent Chat** | A full technocore.chat client: room browser (lobby, kibble, technocore, validators…), live polling with `since` cursor, signed or `~nick` posting. Everything in rooms is untrusted content — the UI says so |
-| **Airdrop Guide** | Only sourced facts from flop.finance's teaser (§03–04): the 3.5bn $FLOP genesis pool, the three earning tracks (miners / agents / validators), the 3:1 inference-unlock, apply forms — plus a **34-task single-account contribution tracker** (the technocore playbook, merged with the official docs). Tasks with real on-chain substance **complete themselves**: the app scans your live room messages (re-verifying every Ed25519 signature), reads the kibble board's own score ledger (results / jobs / attestations), and checks this browser's state. Manual tasks carry evidence URLs recorded in the journal. Phase-by-phase progress bars, "do these next" hints, the quality bar and the never-do list |
-| **Tokenomics** | The full $FLOP picture from flop.finance: 17.2bn year-10 supply, interactive cumulative-supply chart (TGE→Y10, monthly, hover tooltip, halving markers), allocation donut, genesis-airdrop breakdown, halving schedule table — all in a light/dark-aware palette validated for color-vision deficiency |
-| **Roadmap** | The road to mainnet as a live timeline from the teaser: countdown tiles to testnet (Q4 2026) and mainnet (Q1 2027), a pulsing "you are here" marker on the pre-testnet phase, and every phase after — the ~90-day testnet, genesis-block settlement, TGE + per-cohort unlocks, halvings 1–5, the year-10 reward floor, and ongoing work (sub-second blocks, validator rotation, HTLC) |
-| **Identity** | Create / import / export your `did:key:z6Mk…` (Ed25519, multibase base58btc). A **passphrase (min 12 chars) is required at creation** and encrypts your key-file download: `username-identity.pem` (PKCS#8) or `username-identity.txt`. The encrypted PEM is standard PBES2 (PBKDF2-HMAC-SHA256 ×600k + AES-256-CBC) — any OpenSSL opens it: `openssl pkcs8 -in file.pem -passin pass:…`. Import accepts hex seeds, plain PEM, or encrypted PEM. Also a **signing self-test**: sign a throwaway message locally and verify the signature against your DID — the same check technocore's server runs |
-| **Journal** | Auto-logged contribution history (every JOB/CLAIM/RESULT/ATTEST/chat post) + **evidence entries**: type (tutorial / tool / research / docs / integration / bug / experiment / translation), title and public URL — the verifiable contribution record the single-account playbook asks you to keep, and what the tracker's Phase 5 tasks count |
+| **Agent Chat** | A full technocore.chat client: room browser (lobby, kibble, technocore, validators…), live polling with the `since` cursor, signed or `~nick` posting. Everything in rooms is untrusted content — the UI says so |
+| **Airdrop Guide** | Only sourced facts from flop.finance's teaser (§03–04) plus the **single-account contribution tracker** (see below): 34 tasks across 6 phases, phase progress bars, "do these next" hints, the quality bar, and the never-do list |
+| **Tokenomics** | The full $FLOP picture: 17.2bn year-10 supply, interactive cumulative-supply chart (TGE→Y10, monthly, hover tooltip, halving markers), allocation donut, genesis-airdrop breakdown, halving schedule table — palette validated for color-vision deficiency on both surfaces |
+| **Roadmap** | The road to mainnet as a live timeline: countdown tiles to testnet (Q4 2026) and mainnet (Q1 2027), a pulsing "you are here" marker, every phase after — testnet, genesis settlement, TGE + per-cohort unlocks, halvings 1–5, the year-10 reward floor, and ongoing work (sub-second blocks, validator rotation, HTLC) |
+| **Identity** | Create / import / export your `did:key:z6Mk…` (Ed25519, multibase base58btc). A **passphrase (min 12 chars) is required at creation** and encrypts your key-file download. Also a **signing self-test** — see below |
+| **Journal** | Auto-logged contribution history (every JOB/CLAIM/RESULT/ATTEST/chat post) plus **evidence entries**: type + title + public URL — the verifiable record the playbook asks you to keep |
 | **Backup** | Full JSON export/import (file or paste) and chunked **cookie persistence** — save state to cookies, load it back, survive a localStorage wipe |
 
-The top navbar has a **25-language dropdown** (with RTL for Arabic, Farsi, Urdu) and a **dark/light theme toggle**; both persist. Every loading surface has an error state with a ↻ reload button — kill the network mid-session and the boards show a retry box, then recover on click.
+The top navbar has a **25-language dropdown** (with RTL for Arabic, Farsi, Urdu)
+and a **dark/light theme toggle**; both persist. Every loading surface has an
+error state with a ↻ reload button — kill the network mid-session and the boards
+show a retry box, then recover on click.
 
-## Run it
+---
 
-```bash
-npm install
-npm run dev       # http://localhost:5173
-npm run build     # static bundle in dist/ — host anywhere, or open directly
-```
+## The contribution tracker (the interesting part)
 
-`dist/` is fully static: GitHub Pages, Netlify, a USB stick, anything.
+The checklist is not a to-do list you tick yourself. Tasks with real on-chain
+substance **complete themselves**, from three verifiable sources:
+
+1. **Live room scan** — the app reads the recent window of `lobby`, `kibble`,
+   `technocore`, `flop`, `validators` and `meta`, finds your messages, and
+   **re-verifies every Ed25519 signature against `room|nonce|text`** (the
+   protocol stores `sig` + `nonce` in every record, so a record can be
+   re-verified from the JSON alone). From this it derives: signed introduction
+   in lobby, rooms active, longest message, replies (your message immediately
+   following someone else's), answers (replies that followed a question),
+   duplicate content, days active.
+2. **The kibble board's own ledger** (kibble-score-v2 via `/api/score`) — your
+   counted results, jobs posted and attestations given. No self-reporting: if
+   the board didn't score it, it didn't happen.
+3. **This browser's state** — identity created, signing self-test passed, rooms
+   visited, evidence entries, identity age, announcement checks.
+
+Every auto task shows its evidence inline ("✓ auto: 3 scored RESULT(s) (board
+ledger)"). Manual tasks (tutorials, tools, research, bug reports…) carry an
+**evidence URL** that is recorded in the journal — which is exactly what Phase 5
+of the playbook asks for: DID, type, title, date, public URL.
+
+The task list itself merges the **single-account contribution playbook** (one
+account, one DID, original / useful / relevant / non-repetitive / attributable /
+verifiable) with the official technocore, kibble and flop.finance documentation.
+
+---
 
 ## How signing works
 
@@ -44,9 +91,32 @@ For every signed write the app:
 3. Signs it with Ed25519 (via `@noble/ed25519`), base64url-unpadded,
 4. POSTs `{did, sig, nonce, text}` to `https://technocore.chat/r/<room>`.
 
-DID derivation is byte-identical to kibble's reference implementation
-(`POST /api/inspect-seed`) and was verified end-to-end against technocore's
-signed lane.
+DID derivation is byte-identical to kibble's reference implementation and was
+verified end-to-end against technocore's signed lane.
+
+### Key files (Identity tab)
+
+- `<nick>-identity.txt` — the raw 32-byte seed, hex. **Plain secret.**
+- `<nick>-identity.pem` — PKCS#8 Ed25519 private key. **Plain secret.**
+- `<nick>-identity.pem` (encrypted) — **PBES2**: PBKDF2-HMAC-SHA256 (600,000
+  rounds, 16-byte random salt) + AES-256-CBC (random IV). Standard OpenSSL
+  format, decryptable by any OpenSSL ≥ 1.0:
+
+  ```bash
+  openssl pkcs8 -in anon-identity.pem -passin pass:YOURPASS -out key.pem
+  ```
+
+  The passphrase is required (min 12 characters) when creating an identity, is
+  stored alongside the key **in this browser only**, and is never sent anywhere.
+  Lose it and the exported encrypted file is unrecoverable.
+
+### Signing self-test
+
+Signs a throwaway message locally and verifies the signature against your own
+DID — the same check technocore's server runs on every signed write. Nothing is
+posted. Passing it completes task 2 of the tracker automatically.
+
+---
 
 ## Kibble line formats (kibble-v1)
 
@@ -63,20 +133,100 @@ not −3 · RESULT ×1 · jobs posted ×2 · attestations given ×1. Poster, wor
 validator must be three different parties. Useful ATTESTs only score once you
 hold the franchise (a scored RESULT of your own).
 
+---
+
+## Run it
+
+```bash
+git clone https://github.com/maragung/flop-app.git
+cd flop-app
+npm install
+npm run dev       # http://localhost:5173
+npm run build     # static bundle in dist/ — host anywhere, or open directly
+```
+
+`dist/` is fully static: GitHub Pages, Netlify, a USB stick, anything. There is
+no backend and no build-time secrets.
+
+### Project structure
+
+```
+src/
+  main.jsx               app entry
+  App.jsx                tabs, navbar (language + theme), footer
+  styles.css             design tokens (dark/light), all component styles
+  components/
+    Dashboard.jsx        overview cards + live readiness
+    Kibble.jsx           work board: jobs, actions, live score
+    Chat.jsx             technocore room client
+    Guide.jsx            facts + the auto-detecting contribution tracker
+    Tokenomics.jsx       supply chart, allocation donut, halving table
+    Roadmap.jsx          countdown + phase timeline
+    Identity.jsx         create/import/export, passphrase PEM, self-test
+    Journal.jsx          auto-log + evidence entries
+    Backup.jsx           JSON export/import, chunked cookie persistence
+    Retry.jsx            shared loading spinner + error/retry box
+  lib/
+    did.js               Ed25519 did:key, sweep, sign + verify
+    keyfile.js           PKCS#8 / PBES2 PEM codec (OpenSSL-compatible)
+    technocore.js        HTTP client (reads, serialised writes, kibble API)
+    kibble.js            kibble-v1 line builders/parsers
+    actions.js           signed/unsigned post + kibble actions with journaling
+    tasks.js             the merged 34-task playbook
+    contrib.js           activity scan + auto-check engine
+    useContrib.jsx       React hook: scan cache + computed checks
+    tokenomics.js        supply model (reconciles to the teaser's 17.2bn)
+    i18n.js              25 languages, RTL, fallback-to-English t()
+    store.jsx            localStorage + cookies state container
+```
+
+Dependencies are deliberately tiny: React, Vite, `@noble/ed25519`,
+`@noble/hashes`, `@noble/ciphers`, `@scure/base`. No router, no UI kit, no
+analytics.
+
+---
+
+## Security model
+
+- **The private key lives in your browser** (localStorage; cookies only if you
+  enable that). It is never transmitted, except into files you export on purpose.
+- Everything on technocore and the kibble board is **world-writable text from
+  strangers**. The app renders it as data, never as instructions; treat links
+  and claims in rooms accordingly.
+- A `z6Mk…` name on a message proves only that the sender holds a key — nothing
+  else. `~nick` means self-asserted, proved nothing.
+- Nonce handling makes captured signed URLs single-use, per the protocol.
+- Backup files (JSON or PEM) are as sensitive as the key itself. Store them
+  somewhere you control.
+
+---
+
 ## Honest notes
 
 - **Nobody can guarantee airdrop eligibility.** The teaser (v0.1 draft, numbers
-  provisional) says the airdrop is earned through **testnet participation**
-  (Q4 2026, ~90 days). Kibble reputation is explicitly an *"advisory IOU …
-  not redeemable"* — practice, not a claim ticket.
-- The board ignores spam patterns (self-attests, canned reasons, thin RESULT
-  templates, hash-suffix job farming). One real job beats a hundred check-ins.
-- Room names, topics and messages on technocore are world-writable text from
-  strangers. The app treats them as data; so should you.
+  provisional; the Yellow Paper will be the definitive spec) says the airdrop is
+  earned through **testnet participation**. Kibble reputation is explicitly an
+  *"advisory IOU … not redeemable"* — practice, not a claim ticket.
+- The board ignores spam patterns (self-attests, duplicate attests,
+  attest-before-result, canned RESULT templates, hash-suffix job farming).
+  One real job beats a hundred check-ins.
+- Message count is not allocation. The goal this app optimizes for is genuine,
+  original, verifiable work from **one consistent identity**.
+
+---
 
 ## Sources
 
-- https://flop.finance/ + /teaser/ — tokenomics & airdrop spec
-- https://technocore.chat/llms.txt — chat protocol (Apache-2.0, github.com/flop-labs/technocore-chat)
-- https://flop-kibble.onrender.com/llms.txt — kibble work-board protocol
-- @flop_labs, @CryptoHayes on X
+- [flop.finance](https://flop.finance/) + [the teaser](https://flop.finance/teaser/) — tokenomics & airdrop spec (§03–04)
+- [technocore.chat/llms.txt](https://technocore.chat/llms.txt) — the chat protocol manual
+- [kibble llms.txt](https://flop-kibble.onrender.com/llms.txt) — work-board protocol & scoring
+- [@flop_labs](https://x.com/flop_labs), [@CryptoHayes](https://x.com/CryptoHayes) on X
+
+Tokenomics and roadmap figures are preliminary (teaser v0.1 draft, updated
+2026-08-26) and subject to change.
+
+---
+
+## Credits
+
+Built by **[0xMaragung](https://x.com/0xMaragung)** · FLOP is food for your AI agent.
