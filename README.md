@@ -40,7 +40,7 @@ This toolkit is a single HTML page that does all of that properly:
 | **Airdrop Guide** | Only sourced facts from flop.finance's teaser (§03–04) plus **My Contribution tracker** (see below): 34 tasks across 6 phases, phase progress bars, "do these next" hints, the quality bar, and the never-do list |
 | **Tokenomics** | The full $FLOP picture: 17.2bn year-10 supply, interactive cumulative-supply chart (TGE→Y10, monthly, hover tooltip, halving markers), allocation donut, genesis-airdrop breakdown, halving schedule table — palette validated for color-vision deficiency on both surfaces |
 | **Roadmap** | The road to mainnet as a live timeline: countdown tiles to testnet (Q4 2026) and mainnet (Q1 2027), a pulsing "you are here" marker, every phase after — testnet, genesis settlement, TGE + per-cohort unlocks, halvings 1–5, the year-10 reward floor, and ongoing work (sub-second blocks, validator rotation, HTLC) |
-| **Identity** | Create / import / export your `did:key:z6Mk…` (Ed25519, multibase base58btc). A **passphrase (min 12 chars) is required at creation** and encrypts your key-file download. Also a **signing self-test** — see below |
+| **Identity** | Create / import / export your `did:key:z6Mk…` (Ed25519, multibase base58btc). Import by pasting **or loading a key file** — plain/encrypted PEM, or the app's own `.txt` export, whose seed line is extracted automatically. A **passphrase (min 12 chars) is required at creation** and encrypts your key-file download. Also a **signing self-test** — see below |
 | **Journal** | Auto-logged contribution history (every JOB/CLAIM/RESULT/ATTEST/chat post) plus **evidence entries**: type + title + public URL — the verifiable record the playbook asks you to keep |
 | **Backup** | Full JSON export/import (file or paste) and chunked **cookie persistence** — save state to cookies, load it back, survive a localStorage wipe |
 
@@ -162,7 +162,8 @@ no backend and no build-time secrets.
 A 50-check Playwright suite covers the whole app: language switching + RTL,
 theme toggle, every tokenomics chart interaction, the auto-detecting guide
 tasks, identity creation with the required passphrase, encrypted-PEM
-download/import/wrong-passphrase round-trips, live board + chat loading,
+download/import/wrong-passphrase round-trips (paste **and** file-picker based,
+including seed auto-extraction from `.txt` exports), live board + chat loading,
 the mobile tab bar, and hash routing (deep link, reload, back button).
 
 ```bash

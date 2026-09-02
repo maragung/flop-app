@@ -184,6 +184,34 @@ await page.locator('button', { hasText: 'Import key' }).click()
 await page.waitForTimeout(800)
 ok('wrong passphrase import rejected', (await page.locator('.error').last().textContent()).includes('Wrong passphrase'))
 
+// ---- 6b. file-based import ----
+console.log('6b. file import')
+await page.setInputFiles('input[type=file]', '/tmp/frombrowser-enc.pem')
+await page.waitForTimeout(400)
+ok('key file loads into the import box', (await page.locator('textarea').first().inputValue()).includes('BEGIN ENCRYPTED PRIVATE KEY'))
+ok('loaded filename is shown', (await page.locator('text=/frombrowser-enc.pem/').count()) >= 1)
+await page.locator('input[placeholder="passphrase used to encrypt the file"]').fill('hunter2starlong')
+await page.locator('button', { hasText: 'Import key' }).click()
+await page.waitForTimeout(800)
+ok('encrypted PEM file import restores same DID', (await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)) === didBefore)
+// .txt export -> seed line extracted automatically
+const seedHex = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.seedHex)
+fs.writeFileSync('/tmp/frombrowser-identity.txt',
+  `FLOP Toolkit — did:key identity\nDID: ${didBefore}\nPrivate key (seed, 32 bytes hex): ${seedHex}\nCreated: ${new Date().toISOString()}\n`)
+await page.evaluate(() => { localStorage.clear() })
+await page.reload({ waitUntil: 'networkidle' })
+await page.locator('.navtabs button', { hasText: 'Identity' }).click()
+await page.waitForTimeout(300)
+await page.setInputFiles('input[type=file]', '/tmp/frombrowser-identity.txt')
+await page.waitForTimeout(400)
+ok('.txt export: seed hex auto-extracted', (await page.locator('textarea').first().inputValue()) === seedHex)
+await page.locator('button', { hasText: 'Import key' }).click()
+await page.waitForTimeout(800)
+ok('.txt file import restores same DID', (await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)) === didBefore)
+// restore the fresh-state precondition for the sections below
+await page.evaluate(() => { localStorage.clear() })
+await page.reload({ waitUntil: 'networkidle' })
+
 // ---- 7. kibble + chat error/retry UI exists, board loads ----
 console.log('7. live boards')
 await page.locator('.navtabs button', { hasText: 'Kibble Board' }).click()

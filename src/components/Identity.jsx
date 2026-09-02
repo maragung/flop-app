@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { didFromSeed, randomSeedHex, validateSeedHex, shortDid, hexToBytes, bytesToHex, signRoomMessage, verifyRoomMessage } from '../lib/did.js'
 import { seedToPem, encryptSeedToPem, decryptPemToSeed, pemLooksEncrypted } from '../lib/keyfile.js'
@@ -50,8 +50,34 @@ export default function Identity() {
   const [busy, setBusy] = useState(false)
   const [pass, setPass] = useState('')
   const [pass2, setPass2] = useState('')
+  const [importFile, setImportFile] = useState('')
+  const fileRef = useRef(null)
 
   const importIsPem = importKey_.trim().startsWith('-----')
+
+  // load a key file (.pem, or a FLOP Toolkit .txt export) into the import box
+  const onImportFile = async (e) => {
+    const f = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file twice
+    if (!f) return
+    setErr(''); setFlash('')
+    try {
+      const text = (await f.text()).trim()
+      // our own .txt exports label the seed — pull it out instead of dumping the whole file
+      const seedLine = text.match(/Private key \(seed, 32 bytes hex\):\s*([0-9a-fA-F]{64})/)
+      if (seedLine) {
+        setImportKey(seedLine[1].toLowerCase())
+        setImportFile(`${f.name} — seed extracted`)
+      } else {
+        setImportKey(text)
+        setImportFile(f.name)
+      }
+      setFlash(`Loaded ${f.name} (${f.size} bytes) — review it below, then Import key.`)
+    } catch (e2) {
+      setImportFile('')
+      setErr(`Could not read ${f.name}: ${e2.message || e2}`)
+    }
+  }
 
   const create = async () => {
     setErr(''); setFlash('')
@@ -171,10 +197,21 @@ export default function Identity() {
             session or the kibble repo. The DID is re-derived from it.
           </p>
           <label>Private key (hex or PEM)</label>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pem,.txt,.key,text/plain,application/octet-stream"
+              hidden
+              onChange={onImportFile}
+            />
+            <button className="small ghost" onClick={() => fileRef.current?.click()}>📂 Load key file…</button>
+            {importFile && <span className="tiny muted">{importFile} — review below, then Import key</span>}
+          </div>
           <textarea
             value={importKey_}
-            onChange={(e) => setImportKey(e.target.value)}
-            placeholder="64 hex characters — or paste a -----BEGIN … KEY----- file"
+            onChange={(e) => { setImportKey(e.target.value); setImportFile('') }}
+            placeholder="64 hex characters — or paste / load a -----BEGIN … KEY----- file"
             style={{ minHeight: 96 }}
           />
           {importIsPem && pemLooksEncrypted(importKey_) && (
