@@ -49,6 +49,12 @@ and a **dark/light theme toggle**; both persist. Every loading surface has an
 error state with a ↻ reload button — kill the network mid-session and the boards
 show a retry box, then recover on click.
 
+Tabs live in the URL hash (`#kibble`, `#guide`), so a reload, a shared link, or
+the browser back button all land on the right tab — and the document title
+follows the tab and the language. The DID badge in the top bar is
+**click-to-copy** (with a fallback for insecure http). Keyboard users get a
+visible `:focus` ring, and `prefers-reduced-motion` disables all animation.
+
 ---
 
 ## The contribution tracker (the interesting part)
@@ -148,6 +154,23 @@ npm run build     # static bundle in dist/ — host anywhere, or open directly
 `dist/` is fully static: GitHub Pages, Netlify, a USB stick, anything. There is
 no backend and no build-time secrets.
 
+### Tests
+
+A 50-check Playwright suite covers the whole app: language switching + RTL,
+theme toggle, every tokenomics chart interaction, the auto-detecting guide
+tasks, identity creation with the required passphrase, encrypted-PEM
+download/import/wrong-passphrase round-trips, live board + chat loading,
+the mobile tab bar, and hash routing (deep link, reload, back button).
+
+```bash
+npm run test:e2e                                        # against localhost:5173
+APP_URL=http://localhost:14421/ npm run test:e2e        # against any running copy
+PW_CHROME=/usr/bin/chromium npm run test:e2e            # custom browser path
+```
+
+It runs against the real technocore/kibble backends (reads only — nothing is
+ever posted from the suite).
+
 ### Project structure
 
 ```
@@ -178,6 +201,9 @@ src/
     tokenomics.js        supply model (reconciles to the teaser's 17.2bn)
     i18n.js              25 languages, RTL, fallback-to-English t()
     store.jsx            localStorage + cookies state container
+    util.js              clipboard helper (secure + insecure contexts)
+tests/
+    e2e.mjs              50-check Playwright regression suite
 ```
 
 Dependencies are deliberately tiny: React, Vite, `@noble/ed25519`,

@@ -5,6 +5,7 @@ import { taskDone } from '../lib/contrib.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { kibbleScore, kibbleStats } from '../lib/technocore.js'
 import { shortDid } from '../lib/did.js'
+import { copyText } from '../lib/util.js'
 import { useI18n } from '../lib/i18n.js'
 import { Loading, ErrorRetry } from './Retry.jsx'
 
@@ -21,6 +22,7 @@ export default function Dashboard({ go }) {
   const [scoreErr, setScoreErr] = useState('')
   const [stats, setStats] = useState(null)
   const [statsErr, setStatsErr] = useState('')
+  const [copiedDid, setCopiedDid] = useState(false)
 
   const loadStats = useCallback(() => {
     setStatsErr('')
@@ -66,7 +68,19 @@ export default function Dashboard({ go }) {
           <div className="card">
             <div className="spread">
               <h3>{t('card_identity')}</h3>
-              <button className="small ghost" onClick={() => go('identity')}>manage →</button>
+              <span className="row" style={{ gap: 6 }}>
+                <button
+                  className="small ghost"
+                  title="Copy your DID to the clipboard"
+                  onClick={() => copyText(identity.did).then(() => {
+                    setCopiedDid(true)
+                    setTimeout(() => setCopiedDid(false), 1500)
+                  })}
+                >
+                  {copiedDid ? 'copied ✓' : 'copy DID'}
+                </button>
+                <button className="small ghost" onClick={() => go('identity')}>manage →</button>
+              </span>
             </div>
             <div className="keybox" style={{ color: 'var(--accent)' }}>{identity.did}</div>
             <p className="tiny muted" style={{ marginBottom: 0 }}>

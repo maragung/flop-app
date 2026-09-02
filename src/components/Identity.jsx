@@ -2,18 +2,13 @@ import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { didFromSeed, randomSeedHex, validateSeedHex, shortDid, hexToBytes, bytesToHex, signRoomMessage, verifyRoomMessage } from '../lib/did.js'
 import { seedToPem, encryptSeedToPem, decryptPemToSeed, pemLooksEncrypted } from '../lib/keyfile.js'
+import { copyText } from '../lib/util.js'
 
 function KeyField({ label, value, secret = false }) {
   const [show, setShow] = useState(!secret)
   const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = value; document.body.appendChild(ta); ta.select()
-      document.execCommand('copy'); ta.remove()
-    }
+  const copy = () => {
+    copyText(value)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
