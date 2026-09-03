@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (86 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (91 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -402,6 +402,38 @@ await page.waitForTimeout(1500)
 ok('encrypted restore with the right passphrase works', (await page.locator('.note', { hasText: 'Restored ✓' }).count()) >= 1)
 ok('restored identity is the same DID', (await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)) === didBeforeEnc)
 ok('restored identity has a working key again', await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.seedHex)))
+
+// ---- 11. kibble "needs my attest" filter (three-party rule helper) ----
+console.log('11. needs-attest filter')
+await page.locator('.navtabs button', { hasText: 'Kibble Board' }).click()
+let attFilter = page.locator('button', { hasText: 'needs my attest' })
+try { await attFilter.waitFor({ state: 'visible', timeout: 30000 }) } catch {}
+ok('needs-attest filter appears once an identity exists', await attFilter.count() === 1)
+await attFilter.click()
+await page.waitForTimeout(500)
+ok('filter toggles to checked/primary', (await attFilter.getAttribute('class')).includes('primary') && (await attFilter.textContent()).includes('✓'))
+// wait until the board itself has loaded (jobs or the no-match note), then assert
+try {
+  await page.waitForFunction(
+    () => document.querySelectorAll('.job').length > 0
+      || [...document.querySelectorAll('.joblist')].some((n) => n.textContent.includes('No jobs match.')),
+    null, { timeout: 30000, polling: 500 },
+  )
+} catch {}
+// every surviving job is delivered and neither poster nor worker is YOU
+const filtered = await page.evaluate(() => {
+  const jobs = [...document.querySelectorAll('.job')]
+  const nomatch = [...document.querySelectorAll('.joblist, .card')].some((n) => n.textContent.includes('No jobs match.'))
+  return {
+    n: jobs.length,
+    allDelivered: jobs.every((j) => j.querySelector('.badge').className.includes('delivered')),
+    noneMine: jobs.every((j) => !j.textContent.includes('YOU')),
+    nomatch,
+  }
+})
+ok('filtered list shows only delivered jobs', filtered.n === 0 || filtered.allDelivered)
+ok('filtered list never shows my own jobs', filtered.n === 0 || filtered.noneMine)
+ok('filter result is jobs or the no-match note', (filtered.n > 0) !== filtered.nomatch)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }

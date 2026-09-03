@@ -8,7 +8,7 @@
 import { readRoom, kibbleScore } from './technocore.js'
 import { verifyRoomMessage } from './did.js'
 
-export const SCAN_ROOMS = ['lobby', 'kibble', 'technocore', 'flop', 'validators', 'meta']
+export const SCAN_ROOMS = ['lobby', 'kibble', 'technocore', 'flop', 'flop_labs', 'flop_governance', 'validators', 'meta']
 
 // Read the recent window of each room and build activity metrics for one DID.
 // Notes: a room read returns the last N messages (limit 200 max advisory);

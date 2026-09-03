@@ -73,10 +73,10 @@ export const FLOP_EXTRAS = [
   { id: 'apply-miner', label: 'Miner track: fill the FLOP Miner Interest Form', url: 'https://flop.finance/apply/miner' },
   { id: 'apply-validator', label: 'Validator track: fill the FLOP Validator Interest Form', url: 'https://flop.finance/apply/validator' },
   { id: 'apply-kol', label: 'Creator track: fill the FLOP KOL survey', url: 'https://flop.finance/apply/kol' },
-  { id: 'gpu', label: 'Miner track: check your hardware against the recommended specs (teaser §02)' },
+  { id: 'gpu', label: 'Miner track: check your hardware against the specs — a consumer GPU with ≥ 16 GB VRAM is the floor (teaser §02)' },
   { id: 'faucet', label: 'At testnet launch: claim the test-token faucet (agents)' },
-  { id: 'spend', label: 'At testnet: spend test tokens on inference — spend is what the agent airdrop measures' },
-  { id: 'uptime', label: 'At testnet: keep node uptime / accuracy / latency high (validators)' },
+  { id: 'spend', label: 'Agent track: spend test tokens on inference — every 3 $FLOP spent unlocks 1 airdropped $FLOP; it arrives locked' },
+  { id: 'uptime', label: 'Validator track: keep uptime / block production / accuracy / latency high — the top 1,000 make the mainnet set' },
 ]
 
 export const DO_NOT = [
@@ -87,6 +87,7 @@ export const DO_NOT = [
   'Artificially generate activity or rotate IPs to simulate users',
   'Post private keys, seed phrases, passwords or secrets',
   'Assume message count equals airdrop allocation — it does not',
+  'Attest your own job or trade reciprocal attestations — the board\'s pair caps zero them out',
 ]
 
 export const QUALITY_BAR = ['Original', 'Useful', 'Relevant', 'Informative', 'Non-repetitive', 'Same-DID attributable', 'Verifiable']

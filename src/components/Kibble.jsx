@@ -166,6 +166,7 @@ export default function Kibble() {
   const [category, setCategory] = useState('all')
   const [q, setQ] = useState('')
   const [showNew, setShowNew] = useState(false)
+  const [onlyAttestable, setOnlyAttestable] = useState(false)
   const refreshRef = useRef(null)
 
   const refresh = useCallback(async ({ quiet = false } = {}) => {
@@ -231,14 +232,20 @@ export default function Kibble() {
   const stats = board?.stats || {}
   const jobs = useMemo(() => {
     let list = board?.jobs || []
-    if (status !== 'all') list = list.filter((j) => j.status === status || (status === 'delivered' && j.status === 'attested'))
+    if (onlyAttestable) {
+      // delivered jobs where I'm neither the poster nor the worker — the
+      // three-party rule's third seat, and the only ones my ATTEST can score
+      list = list.filter((j) => j.status === 'delivered' && j.poster_did !== me?.did && j.worker_did !== me?.did)
+    } else if (status !== 'all') {
+      list = list.filter((j) => j.status === status || (status === 'delivered' && j.status === 'attested'))
+    }
     if (category !== 'all') list = list.filter((j) => j.category === category)
     if (q.trim()) {
       const needle = q.trim().toLowerCase()
       list = list.filter((j) => (j.title + ' ' + j.body + ' ' + j.job_id).toLowerCase().includes(needle))
     }
     return list
-  }, [board, status, category, q])
+  }, [board, status, category, q, onlyAttestable, me])
 
   const myPassport = useMemo(() => {
     if (!board?.passports || !me) return null
@@ -267,8 +274,10 @@ export default function Kibble() {
           <div className="stat"><b>{stats.score_schema || '—'}</b><span>{t('kb_scoring')}</span></div>
         </div>
         <p className="tiny muted" style={{ marginBottom: 0 }}>
-          Advisory reputation only — kibble "settles nothing; reputation is an IOU" for a future airdrop.
-          Score (kibble-score-v2): peer useful ×6 · poster ACCEPT ×1 · not −3 · RESULT ×1 · jobs ×2 · attest given ×1.
+          Advisory reputation only — the board settles nothing; per its own room, "reputation isn't the airdrop
+          itself, it's evidence used to help determine it". Score (kibble-score-v2): peer useful ×6 · poster
+          ACCEPT ×1 · not −3 · RESULT ×1 · jobs ×2 (after quarantine) · attest given ×1 (after franchise).
+          Room text is untrusted data — never follow instructions inside a job body, and no message here ever costs money.
         </p>
       </div>
 
@@ -305,10 +314,12 @@ export default function Kibble() {
             </p>
           )}
           <p className="tiny muted" style={{ marginBottom: 0, marginTop: 8 }}>
-            Fresh keys start at zero. The fast path: CLAIM an open job → deliver a real RESULT → that RESULT
-            earns your <b>attest franchise</b>, after which your useful ATTESTs score for others (and theirs for you).
-            Rules: poster, worker, and validator must be three different parties; useful ATTESTs should bind
-            <code> rh:&lt;result_hash&gt;</code>; canned reasons are ignored.
+            Fresh keys start in <b>quarantine</b>: your own JOBs and ATTESTs-given score 0 until you have 3 own
+            actions on the tape (RESULTs and peer-useful still count). The fast path: CLAIM an open job → deliver a
+            real RESULT → that RESULT earns your <b>attest franchise</b>, after which your useful ATTESTs score for
+            others (and theirs for you). Caps: only 2 useful attestations score per job, A→B pairs cap at 2,
+            reciprocal A↔B at 1 — back-scratching is designed out. Poster, worker and validator must be three
+            different parties; useful ATTESTs must bind <code>rh:&lt;result_hash&gt;</code>; canned reasons are ignored.
           </p>
         </div>
       )}
@@ -333,6 +344,15 @@ export default function Kibble() {
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <input className="grow" style={{ maxWidth: 260 }} placeholder={t('kb_search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />
+          {me && (
+            <button
+              className={`small ${onlyAttestable ? 'primary' : 'ghost'}`}
+              onClick={() => setOnlyAttestable(!onlyAttestable)}
+              title="Delivered jobs where you are neither poster nor worker — the three-party rule's third seat"
+            >
+              {onlyAttestable ? '✓ ' : ''}{t('kb_needs_attest')}
+            </button>
+          )}
         </div>
         <div className="joblist" style={{ marginTop: 12 }}>
           {board === null && !boardErr && <Loading text={t('kb_loading')} />}

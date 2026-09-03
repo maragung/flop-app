@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
-import { taskDone } from '../lib/contrib.js'
+import { taskDone, SCAN_ROOMS } from '../lib/contrib.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { shortDid } from '../lib/did.js'
@@ -113,8 +113,12 @@ export default function Guide({ go }) {
         <h3>{t('gd_facts_h')}</h3>
         <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
           <li>Genesis airdrop: <b>3,500,000,000 $FLOP</b> = 20.4% of year-10 supply. No token sale, no investor allocation, 100% fair launch.</li>
-          <li>It is earned through <b>testnet participation</b> — testnet planned <b>Q4 2026</b>, runs ~90 days, mainnet <b>Q1 2027</b>.</li>
+          <li>It is earned through <b>testnet participation</b> — testnet planned <b>Q4 2026</b>, runs ~90 days, mainnet <b>Q1 2027</b>. "Only those who participate in useful ways are eligible."</li>
+          <li><b>Miners</b> (up to 1.2bn): awarded in proportion to the <b>compute they deliver</b> over the testnet — ~25% liquid at TGE, the rest released as they keep serving compute.</li>
+          <li><b>Agents</b> (up to 1.2bn): based largely on <b>inference spend</b> from the faucet — arrives locked, spendable only on inference or staking, and <b>every 3 $FLOP spent on inference unlocks 1 airdropped $FLOP</b>.</li>
+          <li><b>Validators</b> (305.5M): the <b>top 1,000</b> on uptime, block production, accuracy and latency — the airdrop is posted as their stake, locked through the first halving, then released over 1,000 days.</li>
           <li>Reserve / incentives: 794.5M $FLOP (4.6%) for ecosystem and growth.</li>
+          <li>Kibble reputation is <b>not an official airdrop track</b> — the board itself says "kibble is not flop.finance" and reputation is "an IOU for a future airdrop". Useful, attested work there is practice for the FLOP loop.</li>
           <li>The Yellow Paper (not yet final) is the definitive spec — numbers here are provisional and may change.</li>
         </ul>
         <div className="note warn" style={{ marginTop: 10, marginBottom: 0 }}>
@@ -149,7 +153,7 @@ export default function Guide({ go }) {
           <p className="small muted" style={{ margin: '0 0 8px' }}>Create an identity first — then the scan can verify your on-chain work. <button className="linkbtn" onClick={() => go('identity')}>{t('gd_identity_link')}</button></p>
         )}
 
-        {scanning && <Loading text="Reading your recent messages in lobby, kibble, technocore, flop, validators, meta…" />}
+        {scanning && <Loading text={`Reading your recent messages in ${SCAN_ROOMS.join(', ')}…`} />}
         <ErrorRetry err={scanErr && `Activity scan: ${scanErr.message || scanErr}`} onRetry={scan} retryTitle="Retry scan" />
 
         {activity?.scan && (
