@@ -123,6 +123,61 @@ function detectGPU() {
   }
 }
 
+// The two-identity tclk walkthrough — the agentic-commerce loop Hayes said
+// will be airdrop-rewarded ("We will reward true agentic commerce using this
+// feature with airdrop FLOP tokens"). Steps mirror the tclk tab's real
+// controls: offer → accept → lock → reveal, every frame a signed message.
+const TCLK_DEAL_STEPS = [
+  ['gd_tk_s1_h', 'gd_tk_s1_b'],
+  ['gd_tk_s2_h', 'gd_tk_s2_b'],
+  ['gd_tk_s3_h', 'gd_tk_s3_b'],
+  ['gd_tk_s4_h', 'gd_tk_s4_b'],
+  ['gd_tk_s5_h', 'gd_tk_s5_b'],
+]
+
+function TclkDealGuide({ go }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="card" data-testid="tclk-guide">
+      <div className="spread">
+        <h3>{t('gd_tk_h')} <span className="muted small">{t('gd_tk_sub')}</span></h3>
+        <button className="small ghost" onClick={() => setOpen(!open)}>{open ? t('kb_g_hide') : t('kb_g_show')}</button>
+      </div>
+      {open && (
+        <>
+          <div className="kbsteps">
+            {TCLK_DEAL_STEPS.map(([h, b], i) => (
+              <div className="kbstep" key={h}>
+                <span className="stepn" aria-hidden="true">{i + 1}</span>
+                <div>
+                  <b className="small">{t(h)}</b>
+                  <div className="small muted">{t(b)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="linkbtn" onClick={() => go('tclk')}>{t('tab_tclk')} →</button>
+          </div>
+          <div className="grid cols-2" style={{ marginTop: 12 }}>
+            <div className="note warn">
+              <b className="small">{t('gd_tk_rej_h')}</b>
+              <p className="small" style={{ margin: '4px 0 0' }}>{t('gd_tk_rej_b')}</p>
+            </div>
+            <div>
+              <b className="small">{t('gd_tk_rules_h')}</b>
+              <ul className="small muted" style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {['gd_tk_r1', 'gd_tk_r2', 'gd_tk_r3', 'gd_tk_r4'].map((k) => <li key={k} style={{ marginBottom: 4 }}>{t(k)}</li>)}
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Guide({ go }) {
   const store = useStore()
   const { t } = useI18n()
@@ -159,6 +214,9 @@ export default function Guide({ go }) {
           Kibble reputation is explicitly an "advisory IOU … not redeemable". Treat every guarantee as noise.
         </div>
       </div>
+
+      {/* ---- tclk: close a real deal between two identities ---- */}
+      <TclkDealGuide go={go} />
 
       {/* ---- testnet readiness: hardware check + spend→unlock planner ---- */}
       <div className="card">

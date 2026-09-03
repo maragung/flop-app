@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (140 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (145 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -135,6 +135,13 @@ await page.waitForTimeout(200)
 ok('manual task done badge after tick', (await firstManual.locator('xpath=..').locator('.badge').textContent()).includes('done'))
 // evidence field appears on undone evidence tasks
 ok('evidence URL fields offered', await page.locator('input[placeholder*="evidence URL"]').count() >= 5)
+// the two-identity tclk deal guide card (gd_tk_* keys) — 5 steps + 4 rules
+ok('tclk deal guide card present', await page.locator('[data-testid="tclk-guide"]').count() === 1)
+await page.locator('[data-testid="tclk-guide"] button', { hasText: 'Show guide' }).click()
+ok('tclk deal guide shows 5 numbered steps',
+  (await page.locator('[data-testid="tclk-guide"] .stepn').allTextContents()).join(',') === '1,2,3,4,5')
+ok('tclk deal guide lists 4 rules of thumb',
+  (await page.locator('[data-testid="tclk-guide"] ul li').count()) === 4)
 
 // ---- 5. identity: create (required passphrase) + PEM downloads ----
 console.log('5. identity PEM')

@@ -357,6 +357,7 @@ function DealRow({ c, meDid, onOpen }) {
 
 function LiveDeals({ meDid }) {
   const { t } = useI18n()
+  const store = useStore()
   const [offers, setOffers] = useState(null)
   const [err, setErr] = useState('')
   const [deal, setDeal] = useState(null) // { c, records, steps, state }
@@ -418,6 +419,21 @@ function LiveDeals({ meDid }) {
     setBusy(false)
   }
 
+  // a party can push the deal forward from right here: lock (payer), reveal
+  // (payee, using the preimage this browser minted at accept time), refund
+  // (payer, once the window opens). Frames are signed and posted to the deal
+  // room like any other — then the transcript re-folds with the new frame.
+  const postFrame = async (frame) => {
+    setErr(''); setBusy(true)
+    try {
+      const line = encodeFrame(frame)
+      await signedPost(store, deal.room, line)
+      store.addJournal('tclk', `${frame.type} posted to ${deal.room} — ${line.slice(0, 160)}`)
+      await openDeal(deal.c)
+    } catch (e) { setErr(e) }
+    setBusy(false)
+  }
+
   return (
     <div className="card" data-testid="tclk-live">
       <div className="spread">
@@ -458,6 +474,40 @@ function LiveDeals({ meDid }) {
           {deal.state?.status === 'locked' && deal.state.secret == null && (
             <p className="tiny muted" style={{ marginTop: 6 }}>{t('tk_f_waiting')}</p>
           )}
+          {deal.state && (meDid === deal.state.payerDid || meDid === deal.state.payeeDid) && (() => {
+            const st = deal.state
+            const canLock = st.status === 'accepted' && meDid === st.payerDid
+            const canReveal = st.status === 'locked' && meDid === st.payeeDid
+            const preimage = loadSecrets()[st.contract]
+            const canRefund = st.status === 'locked' && meDid === st.payerDid && Date.now() >= st.offer.refundAfterMs
+            if (!canLock && !canReveal && !canRefund) return null
+            return (
+              <div style={{ marginTop: 10 }} data-testid="tclk-actions">
+                <b className="small">{t('tk_a_h')}</b>
+                <div className="row" style={{ marginTop: 6, flexWrap: 'wrap' }}>
+                  {canLock && (
+                    <button className="small primary" disabled={busy} onClick={() => postFrame({
+                      type: 'lock', from: meDid, contract: st.contract,
+                      rail: (st.offer.rails || [])[0] || 'paper', ref: `paper-escrow-${st.contract.slice(2, 10)}`,
+                    })}>🔒 {t('tk_dr_s3')}</button>
+                  )}
+                  {canReveal && preimage && (
+                    <button className="small primary" disabled={busy} onClick={() => postFrame({
+                      type: 'reveal', from: meDid, contract: st.contract, secret: preimage,
+                    })}>🔑 {t('tk_dr_s4')}</button>
+                  )}
+                  {canRefund && (
+                    <button className="small" disabled={busy} onClick={() => postFrame({
+                      type: 'refund', from: meDid, contract: st.contract,
+                    })}>↩ {t('tk_dr_refund')}</button>
+                  )}
+                </div>
+                {canReveal && !preimage && (
+                  <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>⚠ {t('tk_a_no_preimage')}</p>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
       <ErrorRetry err={err && `Room read: ${err.message || err}`} onRetry={load} retryTitle={t('kb_refresh')} />
