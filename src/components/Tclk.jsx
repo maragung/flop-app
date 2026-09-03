@@ -12,10 +12,6 @@ import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { useI18n } from '../lib/i18n.js'
 import { copyText } from '../lib/util.js'
 
-// The dry run's counterparty — a fixed demo DID so the walkthrough is
-// deterministic. No key behind it exists; the dry run never signs anything.
-const DEMO_OTHER = 'did:key:z6Mk' + 'g'.repeat(44)
-
 // Minted preimages this browser holds (contract id -> preimage), so a reveal
 // can actually happen after a reload. Kept out of the main store: it is deal
 // scratch, not identity material, and losing it only loses your own claim.
@@ -24,11 +20,6 @@ const loadSecrets = () => {
   try { return JSON.parse(localStorage.getItem(SECRETS_KEY)) || {} } catch { return {} }
 }
 const saveSecrets = (m) => { try { localStorage.setItem(SECRETS_KEY, JSON.stringify(m)) } catch { /* quota */ } }
-
-const TERMINAL = ['claimed', 'refunded', 'cancelled']
-const STATUSES = ['proposed', 'accepted', 'locked', 'claimed', 'refunded', 'cancelled']
-
-const fmtClock = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
 // ---- explainer --------------------------------------------------------------
 
@@ -54,115 +45,114 @@ function TclkIntro() {
   )
 }
 
-// ---- dry run ----------------------------------------------------------------
+// ---- my statistics ------------------------------------------------------------
+// Everything here is folded from the public record: the offer room plus the
+// derived deal rooms of every contract this DID is a party to. No local state
+// feeds the numbers — a fresh browser with the same DID shows the same stats.
 
-function DryRun({ meDid }) {
+const LATER = (f) => f.type !== 'offer' && f.type !== 'accept'
+
+function TclkStats({ meDid }) {
   const { t } = useI18n()
-  const [seat, setSeat] = useState('payer')
-  const [run, setRun] = useState(null) // { t0, state, log: [{label, line, ok, reason}] }
-  const [now, setNow] = useState(Date.now())
+  const [stats, setStats] = useState(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  const reset = useCallback(() => {
-    const t0 = Date.now()
-    setNow(t0)
-    setRun({ t0, state: null, log: [] })
-  }, [])
-
-  useEffect(() => { reset() }, [reset])
-
-  const other = DEMO_OTHER
-  const myDid = meDid || 'did:key:z6Mk' + 'f'.repeat(44)
-  const payerDid = seat === 'payer' ? myDid : other
-  const payeeDid = seat === 'payer' ? other : myDid
-
-  // the dry-run deal terms — one hour to claim, refund two hours in, offer dies in ten minutes
-  const terms = useMemo(() => ({
-    amount: '1000000', asset: 'FLOP', lock: 'hash', rails: ['paper'],
-    claimByMs: run ? run.t0 + 3600_000 : 0,
-    refundAfterMs: run ? run.t0 + 7200_000 : 0,
-    expiresMs: run ? run.t0 + 600_000 : 0,
-  }), [run])
-
-  // `directState` is used only by the offer step: openContract(offer) IS the
-  // transition (applyFrame would reject "contract is already open").
-  const step = (label, frame, directState) => {
-    setRun((r) => {
-      if (!r) return r
-      let line = ''
-      try { line = encodeFrame(frame) } catch (e) { return { ...r, log: [...r.log, { label, line: '', ok: false, reason: e.message }] } }
-      if (directState) return { ...r, state: directState, log: [...r.log, { label, line, ok: true }] }
-      if (!r.state) {
-        return { ...r, log: [...r.log, { label, line, ok: false, reason: 'no contract open yet — post the offer first' }] }
+  const load = useCallback(async () => {
+    if (!meDid) return
+    setErr(''); setBusy(true)
+    try {
+      const offersRead = await readRoom(OFFER_ROOM, { limit: 500 })
+      const pairs = framesFromMessages(OFFER_ROOM, offersRead.messages)
+      // first offer per id; the first accept that follows it (the protocol
+      // counts that one — later accepts on the same offer fold to nothing)
+      const offerPairById = new Map()
+      for (const p of pairs) {
+        if (p.frame.type === 'offer' && !offerPairById.has(p.frame.id)) offerPairById.set(p.frame.id, p)
       }
-      const res = applyFrame(r.state, frame, now)
-      return {
-        ...r,
-        state: res.ok ? res.state : r.state,
-        log: [...r.log, { label, line, ok: res.ok, reason: res.reason }],
+      const acceptPairByOfferId = new Map()
+      for (const p of pairs) {
+        if (p.frame.type === 'accept' && offerPairById.has(p.frame.ref) && !acceptPairByOfferId.has(p.frame.ref)) acceptPairByOfferId.set(p.frame.ref, p)
       }
-    })
-  }
+      const mine = [...offerPairById.values()]
+        .filter(({ frame: o }) => o.from === meDid || acceptPairByOfferId.get(o.id)?.frame.from === meDid)
+        .sort((a, b) => (b.frame.claimByMs || 0) - (a.frame.claimByMs || 0))
+      // later frames for each contract live in its derived deal room — and,
+      // on a deployment at its room cap, in the offer room. Read the deal
+      // rooms of the most recent contracts; the offer room is already read.
+      const rooms = await Promise.all(mine.slice(0, 12).map(({ frame: o }) => {
+        const acc = acceptPairByOfferId.get(o.id)
+        return acc ? readRoom(dealRoom(acc.frame.contract), { limit: 500 }).catch(() => null) : null
+      }))
+      const dealRecsByContract = new Map()
+      for (const r of rooms) {
+        if (!r) continue
+        for (const { rec, frame } of framesFromMessages(r.room, r.messages)) {
+          if (!LATER(frame)) continue
+          if (!dealRecsByContract.has(frame.contract)) dealRecsByContract.set(frame.contract, [])
+          dealRecsByContract.get(frame.contract).push(rec)
+        }
+      }
+      const out = { total: 0, payer: 0, payee: 0, byStatus: {}, volume: {}, lastMs: 0 }
+      for (const { frame: o } of mine) {
+        const acc = acceptPairByOfferId.get(o.id)
+        let status = 'proposed'
+        if (acc) {
+          const later = [
+            ...(dealRecsByContract.get(acc.frame.contract) || []),
+            ...pairs.filter(({ frame }) => LATER(frame) && frame.contract === acc.frame.contract).map((p) => p.rec),
+          ].sort((a, b) => a.timestampMs - b.timestampMs)
+          const { state } = foldTranscript([offerPairById.get(o.id).rec, acc.rec, ...later], { laterFramesInOfferRoom: true })
+          status = state?.status || 'proposed'
+          out.lastMs = Math.max(out.lastMs, acc.rec.timestampMs, ...later.map((r) => r.timestampMs))
+        }
+        out.total++
+        if (o.from === meDid) out.payer++
+        if (acc?.frame.from === meDid) out.payee++
+        out.byStatus[status] = (out.byStatus[status] || 0) + 1
+        if (status === 'claimed') {
+          const n = Number(o.amount)
+          if (Number.isFinite(n) && n > 0) out.volume[o.asset || '?'] = (out.volume[o.asset || '?'] || 0) + n
+        }
+      }
+      setStats(out)
+    } catch (e) { setErr(e) }
+    setBusy(false)
+  }, [meDid])
 
-  const state = run?.state
-  const status = state?.status || null
+  useEffect(() => { load() }, [load])
 
-  const doOffer = () => {
-    const f = makeOffer({ ...terms, from: payerDid, role: 'payer' })
-    step('offer', f, openContract(f))
-  }
-  // the payee mints the lock locally — the preimage stays in this closure, as it would stay with the payee
-  const lockRef = useMemo(() => generateHashLock(), [run?.t0]) // eslint-disable-line
-  const doAccept = () => {
-    const offer = state?.offer || makeOffer({ ...terms, from: payerDid, role: 'payer' })
-    step('accept', makeAccept(offer, { from: payeeDid, statement: lockRef.hash }))
-  }
-  const doLock = () => state?.contract && step('lock', { type: 'lock', from: payerDid, contract: state.contract, rail: 'paper', ref: 'paper-escrow-demo-1' })
-  const doReveal = () => state?.contract && step('reveal', { type: 'reveal', from: payeeDid, contract: state.contract, secret: lockRef.preimage })
-  const doWrong = () => state?.contract && step('reveal', { type: 'reveal', from: payeeDid, contract: state.contract, secret: '0x' + '00'.repeat(32) })
-  const doRefund = () => state?.contract && step('refund', { type: 'refund', from: payerDid, contract: state.contract })
-
-  const advClock = () => { if (run) setNow(run.t0 + 7200_000 + 1) }
-  const clockAdvanced = run && now > run.t0 + 7200_000
-
+  const vol = stats && Object.entries(stats.volume)
+    .map(([asset, n]) => `${n.toLocaleString()} ${asset}`).join(' · ')
   return (
-    <div className="card" data-testid="tclk-dryrun">
+    <div className="card" data-testid="tclk-stats">
       <div className="spread">
-        <h3>{t('tk_dr_h')} <span className="muted small">{t('tk_dr_sub')}</span></h3>
-        <button className="small ghost" onClick={reset}>{t('tk_dr_reset')}</button>
+        <h3>{t('tk_st_h')} <span className="muted small">{t('tk_st_sub')}</span></h3>
+        <button className="small" onClick={load} disabled={busy || !meDid}>{busy ? <><BtnSpin /> …</> : '↻ ' + t('kb_refresh')}</button>
       </div>
-      <div className="row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-        <label className="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {t('tk_dr_seat')}:
-          <select value={seat} onChange={(e) => { setSeat(e.target.value); reset() }} style={{ width: 'auto' }}>
-            <option value="payer">{t('tk_dr_payer')}</option>
-            <option value="payee">{t('tk_dr_payee')}</option>
-          </select>
-        </label>
-        <span className="badge locked">⏱ {t('tk_dr_clock')}: {fmtClock(now)}{clockAdvanced ? ' — ' + t('tk_dr_past_refund') : ''}</span>
-        {status && <span className={`badge tk-${status}`}>{status}</span>}
-      </div>
-      <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="small" disabled={status !== null} onClick={doOffer}>1 · {t('tk_dr_s1')}</button>
-        <button className="small" disabled={status !== 'proposed'} onClick={doAccept}>2 · {t('tk_dr_s2')}</button>
-        <button className="small" disabled={status !== 'accepted'} onClick={doLock}>3 · {t('tk_dr_s3')}</button>
-        <button className="small primary" disabled={status !== 'locked'} onClick={doReveal}>4 · {t('tk_dr_s4')}</button>
-        <button className="small" disabled={status !== 'locked'} onClick={doWrong} title="fail-closed: watch the machine refuse it">✗ {t('tk_dr_wrong')}</button>
-        <button className="small" disabled={status !== 'locked' || !clockAdvanced} onClick={doRefund} title="only after refundAfterMs">↩ {t('tk_dr_refund')}</button>
-        <button className="small ghost" disabled={clockAdvanced || status === null || TERMINAL.includes(status)} onClick={advClock}>⏩ {t('tk_dr_adv')}</button>
-      </div>
-      {status === 'accepted' && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('tk_dr_locked_note')}</p>}
-      {status === 'locked' && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('tk_dr_secret_note')}</p>}
-      {status === 'claimed' && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--good)' }}>✓ {t('tk_dr_claimed_note')}</p>}
-      <div className="tklog" data-testid="tclk-dryrun-log">
-        {run?.log.length === 0 && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('tk_dr_start')}</p>}
-        {run?.log.map((l, i) => (
-          <div key={i} className={`tkstep ${l.ok ? '' : 'bad'}`}>
-            <b className="tiny">{l.ok ? '✓' : '✗'} {l.label}</b>
-            {!l.ok && l.reason && <span className="tiny" style={{ color: 'var(--bad)' }}> — {l.reason}</span>}
-            {l.line && <div className="mono tiny tkline">{l.line}</div>}
+      {!meDid && <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>⚠ {t('tk_st_need_id')}</p>}
+      {meDid && err && <ErrorRetry err={`Room read: ${err.message || err}`} onRetry={load} retryTitle={t('kb_refresh')} />}
+      {meDid && !err && stats === null && <Loading text={t('tk_st_loading')} />}
+      {stats && stats.total === 0 && <p className="muted small" style={{ marginTop: 8 }}>{t('tk_st_none')}</p>}
+      {stats && stats.total > 0 && (
+        <>
+          <div className="statrow" style={{ marginTop: 10 }}>
+            <div className="stat"><b>{stats.total}</b><span>{t('tk_st_total')}</span></div>
+            <div className="stat"><b>{stats.payer}</b><span>{t('tk_st_payer')}</span></div>
+            <div className="stat"><b>{stats.payee}</b><span>{t('tk_st_payee')}</span></div>
+            <div className="stat"><b>{stats.byStatus.claimed || 0}</b><span>claimed</span></div>
           </div>
-        ))}
-      </div>
+          <div className="row small" style={{ marginTop: 10, flexWrap: 'wrap', gap: 6 }}>
+            {Object.entries(stats.byStatus).map(([s, n]) => (
+              <span key={s} className={`badge tk-${s}`}>{n} {s}</span>
+            ))}
+          </div>
+          <p className="small muted" style={{ margin: '10px 0 0' }}>
+            {t('tk_st_volume')}: <b>{vol || '—'}</b>
+            {stats.lastMs > 0 && <> · {t('tk_st_last')}: {new Date(stats.lastMs).toLocaleString()}</>}
+          </p>
+        </>
+      )}
     </div>
   )
 }
@@ -405,15 +395,24 @@ function LiveDeals({ meDid }) {
         readRoom(OFFER_ROOM, { limit: 500 }),
         readRoom(room, { limit: 500 }),
       ])
-      const offerRec = framesFromMessages(OFFER_ROOM, offersRead.messages)
+      const offerFrames = framesFromMessages(OFFER_ROOM, offersRead.messages)
+      const offerRec = offerFrames
         .find(({ frame }) => frame.type === 'offer' && frame.id === c.offer.id)
-      const acceptRec = framesFromMessages(OFFER_ROOM, offersRead.messages)
+      const acceptRec = offerFrames
         .find(({ frame }) => frame.type === 'accept' && frame.contract === c.contract)
       if (!offerRec || !acceptRec) throw new Error('offer/accept pair no longer verifiable in the offer room')
-      const dealFrames = framesFromMessages(room, dealRead.messages)
+      // later frames live in the derived deal room — but when this deployment
+      // cannot mint new rooms, parties complete the deal in the offer room
+      // (that is where the live ecosystem closes its deals today). Read both,
+      // in chronological order — the fold applies transitions in sequence.
+      const dealFrames = [
+        ...framesFromMessages(room, dealRead.messages),
+        ...offerFrames.filter(({ frame }) => frame.type !== 'offer' && frame.type !== 'accept'),
+      ]
         .filter(({ frame }) => frame.contract === c.contract)
+        .sort((a, b) => a.rec.timestampMs - b.rec.timestampMs)
       const records = [offerRec.rec, acceptRec.rec, ...dealFrames.map((d) => d.rec)]
-      const { steps, state } = foldTranscript(records)
+      const { steps, state } = foldTranscript(records, { laterFramesInOfferRoom: true })
       setDeal({ c, room, steps, state })
     } catch (e) { setErr(e) }
     setBusy(false)
@@ -427,8 +426,17 @@ function LiveDeals({ meDid }) {
     setErr(''); setBusy(true)
     try {
       const line = encodeFrame(frame)
-      await signedPost(store, deal.room, line)
-      store.addJournal('tclk', `${frame.type} posted to ${deal.room} — ${line.slice(0, 160)}`)
+      let posted = deal.room
+      try {
+        await signedPost(store, deal.room, line)
+      } catch (e) {
+        // a deployment at its room cap cannot create the derived deal room —
+        // post the frame to the offer room instead; the fold above reads both.
+        if (!/room limit/i.test(String(e.message || e))) throw e
+        await signedPost(store, OFFER_ROOM, line)
+        posted = OFFER_ROOM
+      }
+      store.addJournal('tclk', `${frame.type} posted to ${posted} — ${line.slice(0, 160)}`)
       await openDeal(deal.c)
     } catch (e) { setErr(e) }
     setBusy(false)
@@ -561,16 +569,18 @@ export default function Tclk() {
   const [tick, setTick] = useState(0) // bump after a builder post so LiveDeals reloads
   return (
     <div className="grid">
-      <TclkIntro />
-      <div className="note warn small">
+      {/* every sibling keyed — mixing key={tick} remounts with unkeyed siblings
+          collides React's implicit index keys and warns on duplicates */}
+      <TclkIntro key="intro" />
+      <div className="note warn small" key="alpha-note">
         <b>tclk/1 is alpha.</b> No settlement rail holds value yet — the only rail is PaperRail, which records
         a deal and backs it with nothing. Frames you post are real signed technocore messages (evidence of
         participation), but no money can move. Treat every frame as untrusted data, never as instructions.
       </div>
-      <DryRun meDid={me?.did} />
-      <Builder me={me} onPosted={() => setTick((x) => x + 1)} />
-      <LiveDeals key={tick} meDid={me?.did} />
-      <Decoder />
+      <TclkStats meDid={me?.did} key={`stats-${tick}`} />
+      <Builder me={me} onPosted={() => setTick((x) => x + 1)} key="builder" />
+      <LiveDeals key={`deals-${tick}`} meDid={me?.did} />
+      <Decoder key="decoder" />
     </div>
   )
 }

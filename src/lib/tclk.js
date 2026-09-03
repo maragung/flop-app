@@ -439,8 +439,15 @@ function authenticatedFrame(record) {
  * Authenticate and fold records in the supplied order. Every record gets a
  * verdict; invalid signatures, forged `from` fields, wrong rooms, malformed
  * lines and bad transitions are rejected without changing state.
+ *
+ * `opts.laterFramesInOfferRoom` widens the room rule for frames after the
+ * accept (lock/reveal/refund…): they are normally confined to the derived
+ * deal room, but a deployment at its room cap cannot create that room — in
+ * that case the deal completes in the offer room, where the frame is still
+ * sender-signed and every transition rule still applies. The room is
+ * canonicality, not the security boundary; the signature is.
  */
-export function foldTranscript(records) {
+export function foldTranscript(records, { laterFramesInOfferRoom = false } = {}) {
   const steps = []
   let state = null
   records.forEach((record, index) => {
@@ -466,7 +473,7 @@ export function foldTranscript(records) {
     const expectedRoom = frame.type === 'offer' || frame.type === 'accept' || state.contract === undefined
       ? OFFER_ROOM
       : dealRoom(state.contract)
-    if (record.room !== expectedRoom) {
+    if (record.room !== expectedRoom && !(laterFramesInOfferRoom && record.room === OFFER_ROOM)) {
       steps.push({ ...base, type: frame.type, ok: false, reason: `${frame.type} must be posted in ${expectedRoom}` })
       return
     }
