@@ -86,7 +86,7 @@ function DeliverForm({ job, onAction, busy, busyKey }) {
   return (
     <div>
       <label>{t('kb_deliver_label')} <code>RESULT v1 | {job.job_id} | …</code></label>
-      <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t('kb_deliver_ph')} />
+      <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t('kb_deliver_ph')} aria-label={t('kb_deliver_label')} />
       {thin && (
         <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>
           ⚠ only {summary.trim().length} characters — generic summaries get "not useful" attestations; describe the actual work
@@ -112,12 +112,21 @@ function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
   const issues = []
   if (CANNED_REASON.test(reason)) issues.push('canned verdict — the board ignores generic praise; say specifically what was useful to you')
   else if (reason.trim() && reason.trim().length < 30) issues.push(`only ${reason.trim().length} characters — one specific sentence about what you used or learned from this result`)
+  // kibble-score-v2 requires useful ATTESTs to bind the result hash; without an
+  // rh: on the tape the ATTEST is spent but cannot score
+  const rhMissing = verdict === 'useful' && !job.result_hash
   return (
     <div>
       <label>{isPoster ? t('kb_accept_label') : t('kb_attest_label')}</label>
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('kb_attest_ph')} />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('kb_attest_ph')} aria-label={isPoster ? t('kb_accept_label') : t('kb_attest_label')} />
       {issues.length > 0 && (
         <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>⚠ {issues[0]}</p>
+      )}
+      {rhMissing && (
+        <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>
+          ⚠ this delivered result carries no <code>rh:</code> hash on the tape — a useful ATTEST without the
+          hash binding is spent but cannot score (poster ACCEPT is unaffected)
+        </p>
       )}
       <div className="row" style={{ marginTop: 6 }}>
         <select value={verdict} onChange={(e) => setVerdict(e.target.value)} style={{ width: 'auto' }}>
@@ -147,15 +156,15 @@ function NewJobForm({ onAction, busy, busyKey }) {
     <div className="grid cols-2">
       <div>
         <label>{t('kb_cat')}</label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('kb_cat')}>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <label>{t('kb_title')}</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('kb_title_ph')} maxLength={120} />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('kb_title_ph')} maxLength={120} aria-label={t('kb_title')} />
       </div>
       <div>
         <label>{t('kb_body')}</label>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('kb_body_ph')} />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('kb_body_ph')} aria-label={t('kb_body')} />
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <button className="primary" disabled={busy || !title.trim() || !body.trim()} onClick={() => onAction('job', null, { category, title, body })}>
@@ -274,10 +283,10 @@ export default function Kibble() {
         <div className="spread">
           <h3>{t('kb_h')} <span className="muted small">{t('kb_sub')}</span></h3>
           <div className="row">
-            <button className="small" onClick={() => { refresh(); refreshScore() }} disabled={!board && !!err}>{t('kb_refresh')}</button>
+            <button className="small" onClick={() => { refresh(); refreshScore() }} disabled={busy}>{t('kb_refresh')}</button>
             <button className="small" onClick={() => setShowNew(!showNew)}>{showNew ? t('kb_cancel') : t('kb_new')}</button>
             {me && <button className="small ghost" disabled={busy} onClick={() => onAction('hello')}>
-              {busyKey === 'hello:undefined' ? <><BtnSpin /> {t('kb_sending')}</> : t('kb_hello')}
+              {busyKey === 'hello:new' ? <><BtnSpin /> {t('kb_sending')}</> : t('kb_hello')}
             </button>}
           </div>
         </div>
@@ -373,15 +382,15 @@ export default function Kibble() {
 
       <div className="card">
         <div className="row">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }} aria-label={t('kb_all_statuses')}>
             <option value="all">{t('kb_all_statuses')}</option>
             {STATUS_ORDER.map((s) => <option key={s} value={s}>{t('st_' + s)}</option>)}
           </select>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 'auto' }}>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 'auto' }} aria-label={t('kb_all_cats')}>
             <option value="all">{t('kb_all_cats')}</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <input className="grow" style={{ maxWidth: 260 }} placeholder={t('kb_search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="grow" style={{ maxWidth: 260 }} placeholder={t('kb_search_ph')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('kb_search_ph')} />
           {me && (
             <button
               className={`small ${onlyAttestable ? 'primary' : 'ghost'}`}

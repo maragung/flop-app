@@ -16,12 +16,14 @@ export function emptyState() {
     version: 1,
     createdAt: new Date().toISOString(),
     identity: null, // { did, seedHex, nick, pass, createdAt }
+    prevIdentity: null, // { did, nick, createdAt, removedAt } — last removed identity, so DID rotation can be caught
     settings: { cookieSave: false, autoRefresh: true, lang: 'en', theme: 'dark' },
     checklist: {}, // id -> { done: bool, ts }
     journal: [],   // { id, ts, type, text, url? }
     lastNonces: {}, // room -> last nonce used by our key
     chat: { nick: 'anon', lastRoom: 'lobby' },
     roomVisits: {}, // room -> { n, first, last }
+    postedRooms: {}, // room -> ISO ts of the last SIGNED post this app made there (extends the tracker's scan)
     signVerifiedAt: null,
     lastAnnCheck: null,
     autoDone: {}, // auto key -> ISO ts first detected done (sticky: scans only see the recent window)
@@ -178,8 +180,18 @@ export function StoreProvider({ children }) {
     return {
       state,
       update,
-      setIdentity: (identity) => update((s) => { s.identity = identity }),
-      clearIdentity: () => update((s) => { s.identity = null }),
+      setIdentity: (identity) => update((s) => {
+        // re-importing the DID that was removed is a restore, not a rotation —
+        // only a genuinely different DID keeps prevIdentity around as a signal
+        if (s.prevIdentity && s.prevIdentity.did === identity.did) s.prevIdentity = null
+        s.identity = identity
+      }),
+      clearIdentity: () => update((s) => {
+        // remember the DID (never the key) so the create/import panel can warn
+        // if a DIFFERENT identity shows up afterwards — rotation is never-do #1
+        if (s.identity) s.prevIdentity = { did: s.identity.did, nick: s.identity.nick, createdAt: s.identity.createdAt, removedAt: new Date().toISOString() }
+        s.identity = null
+      }),
       setNick: (nick) => update((s) => { if (s.identity) s.identity.nick = nick; s.chat.nick = nick }),
       toggleCheck: (id) => update((s) => {
         s.checklist[id] = { done: !s.checklist[id]?.done, ts: new Date().toISOString() }
@@ -194,6 +206,7 @@ export function StoreProvider({ children }) {
         const v = s.roomVisits[room] || { n: 0, first: new Date().toISOString() }
         s.roomVisits[room] = { n: v.n + 1, first: v.first, last: new Date().toISOString() }
       }),
+      notePostedRoom: (room) => update((s) => { s.postedRooms[room] = new Date().toISOString() }),
       markSignVerified: () => update((s) => { s.signVerifiedAt = new Date().toISOString() }),
       markAutoDones: (keys) => update((s) => {
         const fresh = (keys || []).filter((k) => k && !s.autoDone[k])
@@ -218,8 +231,6 @@ export function StoreProvider({ children }) {
       }),
       setChatRoom: (room) => update((s) => { s.chat.lastRoom = room }),
       replaceState: (next) => setState(next),
-      saveToCookies: () => cookiesWrite(state),
-      loadFromCookies: () => { const c = cookiesRead(); if (c) setState(c); return c },
       cookiesInfo: () => ({ count: Number(getCookie(`${COOKIE_PREFIX}n`)) || 0, at: getCookie(`${COOKIE_PREFIX}t`) }),
       wipeAll: () => { lsClear(); cookiesClear(); setState(emptyState()) },
     }

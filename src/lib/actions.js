@@ -2,7 +2,7 @@
 // the kibble board and chat tabs. Signing + nonce bookkeeping in one place.
 import { signRoomMessage } from './did.js'
 import { saySigned, sayUnsigned } from './technocore.js'
-import { refreshActivity } from './contrib.js'
+import { refreshActivity, scanRoomsWith } from './contrib.js'
 
 export async function signedPost(store, room, text) {
   const id = store.state.identity
@@ -12,10 +12,13 @@ export async function signedPost(store, room, text) {
   )
   const reply = await saySigned(room, { did: id.did, sig, nonce, text: swept })
   store.noteNonce(room, nonce)
+  store.notePostedRoom(room)
   // the tracker re-scans itself once the write is readable, so any auto task
-  // this post completes (intro, meaningful, reply, HELLO, JOB…) ticks right away
+  // this post completes (intro, meaningful, reply, HELLO, JOB…) ticks right away.
+  // The room is included explicitly — the captured store predates notePostedRoom.
   setTimeout(() => {
-    refreshActivity(id.did).then((a) => store.setActivity(a)).catch(() => {})
+    const rooms = [...new Set([...scanRoomsWith(store.state), room])]
+    refreshActivity(id.did, { rooms }).then((a) => store.setActivity(a)).catch(() => {})
   }, 2500)
   return { reply, nonce, text: swept }
 }
@@ -23,9 +26,4 @@ export async function signedPost(store, room, text) {
 export async function unsignedPost(store, room, text) {
   const nick = (store.state.chat.nick || 'anon').trim() || 'anon'
   return sayUnsigned(room, nick, text)
-}
-
-// True if the did (or nick showing a did) belongs to the current identity.
-export function isMe(state, did) {
-  return Boolean(state.identity && did && did === state.identity.did)
 }

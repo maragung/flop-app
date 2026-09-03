@@ -8,7 +8,7 @@
 // history back in. Only RECURRING_AUTOS (announcement checks) re-evaluate.
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from './store.jsx'
-import { refreshActivity, computeAutoChecks, mergeStickyChecks } from './contrib.js'
+import { refreshActivity, computeAutoChecks, mergeStickyChecks, scanRoomsWith } from './contrib.js'
 
 const STALE_MS = 15 * 60 * 1000
 
@@ -23,7 +23,7 @@ export function useContrib({ auto = false } = {}) {
     setScanning(true)
     setScanErr('')
     try {
-      store.setActivity(await refreshActivity(identity.did))
+      store.setActivity(await refreshActivity(identity.did, { rooms: scanRoomsWith(store.state) }))
     } catch (e) {
       setScanErr(e)
     }

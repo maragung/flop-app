@@ -141,9 +141,9 @@ export default function Backup() {
         {hasKey && (
           <>
             <label>{t('bk_pass')}</label>
-            <input type="password" value={expPass} onChange={(e) => setExpPass(e.target.value)} placeholder={t('bk_pass_ph')} maxLength={256} />
+            <input type="password" value={expPass} onChange={(e) => setExpPass(e.target.value)} placeholder={t('bk_pass_ph')} maxLength={256} aria-label={t('bk_pass')} />
             <label>{t('bk_pass2')}</label>
-            <input type="password" value={expPass2} onChange={(e) => setExpPass2(e.target.value)} placeholder={t('bk_pass2_ph')} maxLength={256} />
+            <input type="password" value={expPass2} onChange={(e) => setExpPass2(e.target.value)} placeholder={t('bk_pass2_ph')} maxLength={256} aria-label={t('bk_pass2')} />
             <p className="tiny muted" style={{ margin: '6px 0 0' }}>
               {store.state.identity?.pass ? t('bk_prefill_note') : t('bk_newpass_note')}
             </p>
@@ -175,9 +175,9 @@ export default function Backup() {
           <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
         </div>
         <label style={{ marginTop: 8 }}>{t('bk_res_pass')}</label>
-        <input type="password" value={resPass} onChange={(e) => setResPass(e.target.value)} placeholder={t('bk_res_pass_ph')} maxLength={256} />
+        <input type="password" value={resPass} onChange={(e) => setResPass(e.target.value)} placeholder={t('bk_res_pass_ph')} maxLength={256} aria-label={t('bk_res_pass_ph')} />
         <label>{t('bk_paste_label')}</label>
-        <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder='{"app":"flop-toolkit",…}' />
+        <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder='{"app":"flop-toolkit",…}' aria-label={t('bk_paste_label')} />
         <div style={{ marginTop: 8 }}>
           <button disabled={busy || !pasted.trim()} onClick={() => doRestore(pasted, 'paste')}>
             {busyKey === 'paste' ? <><BtnSpin /> {t('bk_restoring')}</> : t('bk_restore')}

@@ -78,13 +78,3 @@ export function parseLine(text) {
       return { kind, text }
   }
 }
-
-export const STATUS_LABEL = {
-  open: 'Open',
-  claimed: 'Claimed',
-  delivered: 'Delivered — needs attestation',
-  useful: 'Useful',
-  not_useful: 'Rejected',
-  attested: 'Attested',
-  rejected: 'Rejected',
-}

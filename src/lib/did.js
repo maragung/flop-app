@@ -100,9 +100,3 @@ export function shortAny(id, n = 14) {
   if (!id) return '—'
   return id.length > n + 3 ? `${id.slice(0, n)}…` : id
 }
-
-export function fingerprint(did) {
-  // first 16 lowercase hex of SHA-256(did) — technocore's DID-note sharding scheme
-  // (async usage only; kept here so cards can show it)
-  return null
-}

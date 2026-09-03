@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (100 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (111 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -216,7 +216,9 @@ fs.writeFileSync('/tmp/frombrowser-plain.pem', pem1)
 console.log('6. pem import')
 const didBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.did)
 // remove identity then import pem (dialog handler must be registered BEFORE the confirm())
-page.on('dialog', (d) => d.accept())
+// — swappable so later sections can test confirm-refused paths (DID-rotation guard)
+let dialogHandler = (d) => d.accept()
+page.on('dialog', (d) => dialogHandler(d))
 await page.locator('button', { hasText: 'Remove from this browser' }).click()
 await page.waitForTimeout(300)
 await page.locator('textarea').first().fill(pem2)
@@ -469,6 +471,59 @@ ok('spend calculator input present', await spendInput.count() === 1)
 await spendInput.fill('300')
 await page.waitForTimeout(300)
 ok('spend calculator computes the 3:1 unlock', (await page.locator('b').filter({ hasText: 'unlocks ≈ 100' }).count()) === 1)
+
+// ---- 14. evidence report, DID-rotation guard, next best move ----
+console.log('14. report & rotation guard')
+// journal: add an evidence entry, then export it as the Phase-5 report
+await page.locator('.navtabs button', { hasText: 'Journal' }).click()
+await page.waitForTimeout(300)
+await page.locator('input[placeholder*="Title — e.g."]').fill('E2E test evidence entry')
+await page.locator('input[placeholder*="Public evidence URL"]').fill('https://github.com/maragung/flop-app')
+await page.locator('button', { hasText: 'Add entry' }).click()
+await page.waitForTimeout(300)
+ok('journal evidence entry added', (await page.locator('.journalitem', { hasText: 'E2E test evidence entry' }).count()) === 1)
+ok('evidence report buttons appear', (await page.locator('button', { hasText: 'Copy evidence report' }).count()) === 1 && (await page.locator('button', { hasText: 'Download report (.md)' }).count()) === 1)
+await page.locator('button', { hasText: 'Copy evidence report' }).click()
+await page.waitForTimeout(400)
+ok('copy report flashes copied', (await page.locator('button', { hasText: 'copied ✓' }).count()) === 1)
+const [dl4] = await Promise.all([
+  page.waitForEvent('download'),
+  page.locator('button', { hasText: 'Download report (.md)' }).click(),
+])
+ok('report downloads as flop-evidence-report.md', dl4.suggestedFilename() === 'flop-evidence-report.md')
+const report = fs.readFileSync(await dl4.path(), 'utf8')
+ok('report carries DID + the evidence URL', report.includes('# FLOP contribution evidence report') && report.includes(didBeforeEnc) && report.includes('https://github.com/maragung/flop-app'))
+
+// DID-rotation guard: removing the identity arms it; a different DID is refused, the same key restores
+await page.locator('.navtabs button', { hasText: 'Identity' }).click()
+await page.waitForTimeout(300)
+const rotSeed = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.seedHex)
+const rotDid = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.did)
+fs.writeFileSync('/tmp/rotation-identity.txt', `FLOP Toolkit — did:key identity\nDID: ${rotDid}\nPrivate key (seed, 32 bytes hex): ${rotSeed}\nCreated: ${new Date().toISOString()}\n`)
+await page.locator('button', { hasText: 'Remove from this browser' }).click()
+await page.waitForTimeout(400)
+ok('removal arms the rotation warning', (await page.locator('button', { hasText: 'Generate key pair' }).count()) === 1 && (await page.locator('div.note').filter({ hasText: 'An identity was removed from this browser' }).count()) === 1)
+// a DIFFERENT key with the confirm refused → blocked (the section-5 PEM is another DID)
+dialogHandler = (d) => d.dismiss()
+await page.setInputFiles('input[type=file]', '/tmp/frombrowser-plain.pem')
+await page.waitForTimeout(400)
+await page.locator('button', { hasText: 'Import key' }).click()
+await page.waitForTimeout(800)
+ok('different-DID import is refused when not confirmed', await page.evaluate(() => !JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity))
+// the SAME key needs no confirm and clears the warning
+dialogHandler = (d) => d.accept()
+await page.setInputFiles('input[type=file]', '/tmp/rotation-identity.txt')
+await page.waitForTimeout(400)
+await page.locator('button', { hasText: 'Import key' }).click()
+await page.waitForTimeout(800)
+ok('same-key restore brings the DID back', await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did) === rotDid)
+ok('restore clears the rotation warning', (await page.locator('div.note').filter({ hasText: 'An identity was removed from this browser' }).count()) === 0)
+
+// dashboard: the next-best-move coach card
+await page.locator('.navtabs button', { hasText: 'Dashboard' }).click()
+await page.waitForTimeout(500)
+ok('next best move card present', await page.locator('.card', { hasText: 'Next best move' }).count() === 1)
+ok('next best move shows a CTA button', (await page.locator('.card', { hasText: 'Next best move' }).locator('button').count()) === 1)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }

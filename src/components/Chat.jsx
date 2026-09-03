@@ -107,10 +107,18 @@ export default function Chat() {
     listRooms().then((r) => setRooms(r.slice(0, 24))).catch(() => {})
   }, [])
 
+  const prevRoom = useRef(room)
   useEffect(() => {
     const el = boxRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [msgs])
+    if (!el) return
+    const roomChanged = prevRoom.current !== room
+    if (roomChanged) prevRoom.current = room
+    // follow the feed only while the reader is at (or near) the bottom — an
+    // autopoll tick must never yank someone back down while they read history.
+    // A room switch always snaps to the newest messages.
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (roomChanged || nearBottom) el.scrollTop = el.scrollHeight
+  }, [msgs, room])
 
   const lint = useMemo(
     () => lintMessage(text, msgs, sign && identity ? identity.did : null),
@@ -172,6 +180,7 @@ export default function Chat() {
             className="grow"
             style={{ maxWidth: 280 }}
             placeholder={t('ch_room_ph')}
+            aria-label={t('ch_room_ph')}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && custom.trim() && switchRoom(custom.trim())}
@@ -226,6 +235,7 @@ export default function Chat() {
           onChange={(e) => { setText(e.target.value); setAskQuality(false) }}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send() }}
           placeholder={t('ch_msg_ph').replace('{room}', room)}
+          aria-label={t('ch_msg_label')}
         />
         {lint.length > 0 && (
           <div className="note warn small" style={{ marginTop: 8 }}>

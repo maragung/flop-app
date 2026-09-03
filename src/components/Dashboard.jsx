@@ -44,7 +44,26 @@ export default function Dashboard({ go }) {
   const pct = Math.round((doneCount / CONTRIB_TASKS.length) * 100)
   const autoDone = CONTRIB_TASKS.filter((c) => c.auto && autoChecks[c.auto]?.done).length
   const dTestnet = daysUntil('2026-10-01')
-  const dMainnet = daysUntil('2027-01-31')
+  const dMainnet = daysUntil('2027-01-01') // same date the Roadmap tile counts down to
+
+  // The single highest-value thing to do right now, from live data: quarantine
+  // first (it gates everything on the board), then the franchise, then open
+  // attest seats, then the next high-priority undone checklist task.
+  const nextMove = (() => {
+    if (!identity) return { text: 'Create your did:key identity — one account, one DID, used for everything you do.', tab: 'identity', cta: 'Create identity' }
+    const terms = score && score.found !== false && !score.error ? score.breakdown?.terms : null
+    if (terms) {
+      const own = (terms.jobs_posted?.count || 0) + (terms.results_delivered?.count || 0) + (terms.attestations_given?.count || 0)
+      const need = score.policy?.caps?.quarantine_own_actions ?? 3
+      if (!score.franchised && own < need) return { text: `Board quarantine: ${own}/${need} own actions (JOB, RESULT or ATTEST). One real piece of work moves you forward.`, tab: 'kibble', cta: 'Open the board' }
+      if (!score.franchised) return { text: 'Deliver a scored RESULT to earn the franchise — until you hold it, peer "useful" attestations you receive score 0.', tab: 'kibble', cta: 'Open the board' }
+    }
+    if (stats?.delivered > 0) return { text: `${stats.delivered} delivered job(s) are waiting for a third-party attestation — one honest, specific ATTEST is the highest-value contribution available right now.`, tab: 'kibble', cta: 'Open the board' }
+    const undone = CONTRIB_TASKS.filter((c) => !taskDone(c, checklist, autoChecks))
+    const next = undone.find((c) => c.hi) || undone[0]
+    if (next) return { text: t('task_' + next.id) + '.', tab: next.tab || 'guide', cta: 'Open the tracker' }
+    return { text: 'All contribution tasks done — keep the streak: real work on the board, honest attestations, one identity.', tab: 'guide', cta: 'Open the tracker' }
+  })()
 
   return (
     <div className="grid">
@@ -167,6 +186,14 @@ export default function Dashboard({ go }) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="card" style={{ borderColor: 'var(--accent)' }}>
+        <div className="spread">
+          <h3>⭐ Next best move</h3>
+          <button className="small primary" onClick={() => go(nextMove.tab)}>{nextMove.cta} →</button>
+        </div>
+        <p className="small" style={{ margin: 0 }}>{nextMove.text}</p>
       </div>
 
       <div className="card">

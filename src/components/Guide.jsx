@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
-import { taskDone, SCAN_ROOMS } from '../lib/contrib.js'
+import { taskDone, scanRoomsWith } from '../lib/contrib.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { shortDid } from '../lib/did.js'
@@ -198,7 +198,7 @@ export default function Guide({ go }) {
           <p className="small muted" style={{ margin: '0 0 8px' }}>Create an identity first — then the scan can verify your on-chain work. <button className="linkbtn" onClick={() => go('identity')}>{t('gd_identity_link')}</button></p>
         )}
 
-        {scanning && <Loading text={`Reading your recent messages in ${SCAN_ROOMS.join(', ')}…`} />}
+        {scanning && <Loading text={`Reading your recent messages in ${scanRoomsWith(store.state).join(', ')}…`} />}
         <ErrorRetry err={scanErr && `Activity scan: ${scanErr.message || scanErr}`} onRetry={scan} retryTitle="Retry scan" />
 
         {activity?.scan && (

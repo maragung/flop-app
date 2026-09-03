@@ -87,6 +87,8 @@ export default function Identity() {
     setErr(''); setFlash('')
     if (newPass.length < 12) return setErr('Passphrase must be at least 12 characters')
     if (newPass !== newPass2) return setErr('Passphrases do not match')
+    const prev = store.state.prevIdentity
+    if (prev && !confirm(`A different identity (${shortDid(prev.did)}, removed ${new Date(prev.removedAt).toLocaleDateString()}) was used in this browser. Creating a brand-new DID means running a second identity — item #1 on the never-do list. Create anyway?`)) return
     setBusy(true)
     // let the button paint its busy state before the (blocking) PBKDF2 run
     setTimeout(async () => {
@@ -113,6 +115,11 @@ export default function Identity() {
         seedHex = validateSeedHex(importKey_)
       }
       const did = await didFromSeed(seedHex)
+      const prev = store.state.prevIdentity
+      if (prev && prev.did !== did && !confirm(`This key is a DIFFERENT DID (${shortDid(did)}) than the one used in this browser before (${shortDid(prev.did)}). Running two identities is item #1 on the never-do list. Import anyway?`)) {
+        setBusy(false)
+        return
+      }
       store.setIdentity({ did, seedHex, nick: nick.trim() || 'anon', createdAt: new Date().toISOString() })
       store.addJournal('identity', `Imported DID ${shortDid(did)}`)
       setImportKey('')
@@ -168,8 +175,16 @@ export default function Identity() {
   }
 
   if (!identity) {
+    const prev = store.state.prevIdentity
     return (
       <div className="grid cols-2">
+        {prev && (
+          <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="note warn">
+              {t('id_prev_note').replace('{d}', new Date(prev.removedAt).toLocaleDateString()).replace('{did}', shortDid(prev.did))}
+            </div>
+          </div>
+        )}
         <div className="card">
           <h3>{t('id_create_h')}</h3>
           <p className="muted small">
@@ -178,11 +193,11 @@ export default function Identity() {
             and the kibble board verify. Nothing is sent anywhere until you sign a message.
           </p>
           <label>{t('id_nick_chat')}</label>
-          <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="anon" maxLength={48} />
+          <input value={nick} onChange={(e) => setNick(e.target.value)} placeholder="anon" maxLength={48} aria-label={t('id_nick_chat')} />
           <label style={{ marginTop: 10 }}>{t('id_pass')}</label>
-          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder={t('id_pass_ph')} maxLength={256} />
+          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder={t('id_pass_ph')} maxLength={256} aria-label={t('id_pass')} />
           <label>{t('id_pass2')}</label>
-          <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder={t('id_pass2_ph')} maxLength={256} />
+          <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder={t('id_pass2_ph')} maxLength={256} aria-label={t('id_pass2')} />
           <div style={{ marginTop: 14 }}>
             <button className="primary" disabled={busy} onClick={create}>{busy ? <><BtnSpin /> {t('id_generating')}</> : t('id_generate')}</button>
           </div>
@@ -208,6 +223,7 @@ export default function Identity() {
               accept=".pem,.txt,.key,text/plain,application/octet-stream"
               hidden
               onChange={onImportFile}
+              aria-label={t('id_load_file')}
             />
             <button className="small ghost" onClick={() => fileRef.current?.click()}>{t('id_load_file')}</button>
             {importFile && <span className="tiny muted">{t('id_file_note').replace('{f}', importFile)}</span>}
@@ -216,12 +232,13 @@ export default function Identity() {
             value={importKey_}
             onChange={(e) => { setImportKey(e.target.value); setImportFile('') }}
             placeholder={t('id_key_ph')}
+            aria-label="Private key (hex or PEM)"
             style={{ minHeight: 96 }}
           />
           {importIsPem && pemLooksEncrypted(importKey_) && (
             <>
               <label>{t('id_pem_pass')}</label>
-              <input type="password" value={importPass} onChange={(e) => setImportPass(e.target.value)} placeholder={t('id_pem_pass_ph')} />
+              <input type="password" value={importPass} onChange={(e) => setImportPass(e.target.value)} placeholder={t('id_pem_pass_ph')} aria-label={t('id_pem_pass')} />
             </>
           )}
           <div style={{ marginTop: 14 }}>
@@ -291,7 +308,7 @@ export default function Identity() {
         <div className="row" style={{ marginTop: 10 }}>
           <button
             className="small danger"
-            onClick={() => { if (confirm('Remove the identity from this browser? Export a backup first if you have not.')) { store.clearIdentity(); store.addJournal('identity', 'Removed DID from this browser') } }}
+            onClick={() => { if (confirm(`Remove the identity from this browser?${store.state.journal.length > 0 ? ` ${store.state.journal.length} journal entries were recorded under it — export a backup first.` : ' Export a backup first if you have not.'} Importing the SAME key back is fine; generating a new DID instead starts a second identity (never-do #1).`)) { store.clearIdentity(); store.addJournal('identity', 'Removed DID from this browser') } }}
           >
             {t('id_remove')}
           </button>

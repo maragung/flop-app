@@ -10,6 +10,19 @@ import { verifyRoomMessage } from './did.js'
 
 export const SCAN_ROOMS = ['lobby', 'kibble', 'technocore', 'flop', 'flop_labs', 'flop_governance', 'flop-network', 'inference-agents', 'gpu-miners', 'validators', 'meta', 'announcements']
 
+// The scan window: the curated room list plus every room THIS app has posted a
+// signed message to (state.postedRooms) — so legitimate participation in a room
+// outside the curated list still counts toward rooms-active / replies / days.
+// Extras are capped at the 10 most recent so the scan stays ~22 requests max.
+export function scanRoomsWith(state) {
+  const extras = Object.entries(state?.postedRooms || {})
+    .sort((a, b) => new Date(b[1]) - new Date(a[1]))
+    .map(([r]) => r)
+    .filter((r) => !SCAN_ROOMS.includes(r))
+    .slice(0, 10)
+  return [...SCAN_ROOMS, ...extras]
+}
+
 // Read the recent window of each room and build activity metrics for one DID.
 // Notes: a room read returns the last N messages (limit 200 max advisory);
 // older history beyond the retained window can't be seen — the scan is
@@ -105,8 +118,8 @@ export async function fetchScoreTerms(did) {
 // Full activity refresh (room scan + score ledger) as a store-ready object.
 // Called by useContrib.scan() and — fire-and-forget — right after any signed
 // write lands, so the tracker ticks without anyone pressing a button.
-export async function refreshActivity(did) {
-  const [scan, score] = await Promise.all([scanActivity(did), fetchScoreTerms(did)])
+export async function refreshActivity(did, { rooms } = {}) {
+  const [scan, score] = await Promise.all([scanActivity(did, { rooms }), fetchScoreTerms(did)])
   return { at: new Date().toISOString(), did, scan, score }
 }
 
@@ -127,6 +140,9 @@ export function computeAutoChecks(state, scan, scoreTerms, now = Date.now()) {
   const journalHasResult = journal.some((j) => j.type === 'kibble' && /\bRESULT\b/.test(j.text || ''))
   const roomsVisited = Object.keys(s.roomVisits || {}).length
   const annFresh = s.lastAnnCheck ? now - new Date(s.lastAnnCheck).getTime() < 7 * DAY : false
+  // rotation: this browser held a different DID before the current one. Restoring
+  // the same key clears prevIdentity's mismatch; a genuinely new DID does not.
+  const rotated = Boolean(s.prevIdentity && id && s.prevIdentity.did !== id.did)
 
   const set = (key, done, detail) => { out[key] = { done, detail } }
 
@@ -156,7 +172,9 @@ export function computeAutoChecks(state, scan, scoreTerms, now = Date.now()) {
   set('history', journal.length >= 10, `${journal.length} journal entries (needs ≥ 10)`)
   set('periodic', (m.activeDays || 0) >= 3, `active on ${m.activeDays || 0} different day(s) (needs ≥ 3)`)
   set('help-others', (m.replies || 0) >= 3, `${m.replies || 0} substantive repl(ies) (needs ≥ 3)`)
-  set('same-identity', Boolean(id && ageDays >= 7), id ? `identity held for ${ageDays} day(s)` : 'no identity')
+  set('same-identity', Boolean(id && ageDays >= 7 && !rotated),
+    rotated ? 'a different DID was used in this browser before — DID rotation is on the never-do list'
+      : id ? `identity held for ${ageDays} day(s)` : 'no identity')
   set('monitor-ann', annFresh, s.lastAnnCheck ? 'official channels checked ' + new Date(s.lastAnnCheck).toLocaleDateString() : 'open the guide to check announcements')
 
   return out
@@ -164,10 +182,11 @@ export function computeAutoChecks(state, scan, scoreTerms, now = Date.now()) {
 
 // Auto tasks that are a recurring habit rather than a one-off achievement —
 // these legitimately re-evaluate on every scan (announcement checks go stale
-// after 7 days on purpose). Everything else, once detected, stays done: the
+// after 7 days on purpose, and same-identity must be able to UN-tick if the
+// browser's DID is rotated). Everything else, once detected, stays done: the
 // room scan only sees the last ~200 messages per room, so yesterday's work
 // would otherwise scroll out of the window and un-tick the task.
-export const RECURRING_AUTOS = new Set(['monitor-ann'])
+export const RECURRING_AUTOS = new Set(['monitor-ann', 'same-identity'])
 
 // Effective auto-checks: what the scan just detected, plus everything ever
 // detected before (sticky history) for non-recurring tasks.
