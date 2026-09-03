@@ -176,7 +176,7 @@ no backend and no build-time secrets.
 
 ### Tests
 
-A 118-check Playwright suite covers the whole app: language switching + RTL,
+A 121-check Playwright suite covers the whole app: language switching + RTL,
 theme toggle, every tokenomics chart interaction, the auto-detecting guide
 tasks (including sticky auto-completions surviving a reload), identity creation
 with the required passphrase, encrypted-PEM

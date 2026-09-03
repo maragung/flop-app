@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (118 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (121 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -537,6 +537,13 @@ await page.locator('.navtabs button', { hasText: 'Dashboard' }).click()
 await page.waitForTimeout(500)
 ok('next best move card present', await page.locator('.card', { hasText: 'Next best move' }).count() === 1)
 ok('next best move shows a CTA button', (await page.locator('.card', { hasText: 'Next best move' }).locator('button').count()) === 1)
+
+// footer: builder credit, GitHub repo link, and the builder's public DID (click-to-copy)
+ok('footer links the flop-app GitHub repo', (await page.locator('.appfoot a[href="https://github.com/maragung/flop-app"]').count()) === 1)
+ok('footer shows the builder DID', (await page.locator('.appfoot .didfoot').textContent()).includes('did:key:z6MkeZAT641SbbXmAUqP8yZe2UqpFnRLC9XihYkQR2EherwJ'))
+await page.locator('.appfoot .didfoot').click()
+await page.waitForTimeout(300)
+ok('footer DID is click-to-copy', (await page.locator('.appfoot .didfoot').textContent()).includes('copied ✓'))
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }

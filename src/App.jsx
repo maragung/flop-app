@@ -16,6 +16,9 @@ import Roadmap from './components/Roadmap.jsx'
 import Journal from './components/Journal.jsx'
 import Backup from './components/Backup.jsx'
 
+// the builder's public DID — an identifier, not a secret (safe to display)
+const MY_DID = 'did:key:z6MkeZAT641SbbXmAUqP8yZe2UqpFnRLC9XihYkQR2EherwJ'
+
 const TABS = [
   { id: 'dashboard', key: 'tab_dashboard', ico: '◎' },
   { id: 'kibble', key: 'tab_kibble', ico: '▩' },
@@ -81,6 +84,7 @@ export default function App() {
   const { lang, setLang, t } = useI18n()
   const [tab, setTab] = useState(tabFromHash)
   const [copiedDid, setCopiedDid] = useState(false)
+  const [didCopied, setDidCopied] = useState(false)
   const { identity } = store.state
   const theme = store.state.settings.theme === 'light' ? 'light' : 'dark'
 
@@ -183,8 +187,19 @@ export default function App() {
       </main>
 
       <footer className="appfoot">
-        <span className="muted tiny">dibuat oleh</span>{' '}
-        <a href="https://x.com/0xMaragung" target="_blank" rel="noreferrer">0xMaragung</a>
+        <div>
+          <span className="muted tiny">dibuat oleh</span>{' '}
+          <a href="https://x.com/0xMaragung" target="_blank" rel="noreferrer">0xMaragung</a>
+          {' · '}
+          <a href="https://github.com/maragung/flop-app" target="_blank" rel="noreferrer">github.com/maragung/flop-app</a>
+        </div>
+        <button
+          className="didfoot"
+          title="click to copy my DID"
+          onClick={async () => { await copyText(MY_DID); setDidCopied(true); setTimeout(() => setDidCopied(false), 1500) }}
+        >
+          {didCopied ? 'copied ✓' : MY_DID}
+        </button>
       </footer>
 
       <TaskToast go={go} />
