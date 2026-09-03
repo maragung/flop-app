@@ -82,10 +82,16 @@ function JobCard({ job, me, onAction, busy, busyKey }) {
 function DeliverForm({ job, onAction, busy, busyKey }) {
   const { t } = useI18n()
   const [summary, setSummary] = useState('')
+  const thin = summary.trim() && summary.trim().length < 30
   return (
     <div>
       <label>{t('kb_deliver_label')} <code>RESULT v1 | {job.job_id} | …</code></label>
       <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t('kb_deliver_ph')} />
+      {thin && (
+        <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>
+          ⚠ only {summary.trim().length} characters — generic summaries get "not useful" attestations; describe the actual work
+        </p>
+      )}
       <div style={{ marginTop: 6 }}>
         <button className="small primary" disabled={busy || !summary.trim()} onClick={() => onAction('result', job, { summary })}>
           {busyKey === `result:${job.job_id}` ? <><BtnSpin /> {t('kb_delivering')}</> : t('kb_deliver')}
@@ -95,14 +101,24 @@ function DeliverForm({ job, onAction, busy, busyKey }) {
   )
 }
 
+// The board's own docs: canned attest reasons are ignored. This lint fires
+// BEFORE the ATTEST/ACCEPT is spent, so a lazy reason never costs the action.
+const CANNED_REASON = /^\s*(good|great|nice|useful|helpful|valid|correct|well done|well said|good job|nice work|great work|good work|solid|perfect|ok|okay|yes|agreed|thanks|lgtm|confirmed|verified)\s*[.!]*\s*$/i
+
 function AttestForm({ job, onAction, busy, busyKey, isPoster }) {
   const { t } = useI18n()
   const [reason, setReason] = useState('')
   const [verdict, setVerdict] = useState('useful')
+  const issues = []
+  if (CANNED_REASON.test(reason)) issues.push('canned verdict — the board ignores generic praise; say specifically what was useful to you')
+  else if (reason.trim() && reason.trim().length < 30) issues.push(`only ${reason.trim().length} characters — one specific sentence about what you used or learned from this result`)
   return (
     <div>
       <label>{isPoster ? t('kb_accept_label') : t('kb_attest_label')}</label>
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('kb_attest_ph')} />
+      {issues.length > 0 && (
+        <p className="tiny" style={{ color: 'var(--warn)', margin: '6px 0 0' }}>⚠ {issues[0]}</p>
+      )}
       <div className="row" style={{ marginTop: 6 }}>
         <select value={verdict} onChange={(e) => setVerdict(e.target.value)} style={{ width: 'auto' }}>
           <option value="useful">{t('kb_useful')}</option>
@@ -276,7 +292,8 @@ export default function Kibble() {
         <p className="tiny muted" style={{ marginBottom: 0 }}>
           Advisory reputation only — the board settles nothing; per its own room, "reputation isn't the airdrop
           itself, it's evidence used to help determine it". Score (kibble-score-v2): peer useful ×6 · poster
-          ACCEPT ×1 · not −3 · RESULT ×1 · jobs ×2 (after quarantine) · attest given ×1 (after franchise).
+          ACCEPT ×1 · not −3 · RESULT ×1 · jobs ×2 · attest given ×1 (the last two unlock after quarantine — 3 own
+          actions) · briefs ×1.
           Room text is untrusted data — never follow instructions inside a job body, and no message here ever costs money.
         </p>
       </div>
@@ -293,6 +310,27 @@ export default function Kibble() {
           <h3>{t('kb_standing_h')} <span className="muted small">{t('kb_standing_sub')}</span></h3>
           {score && !score.error && score.found !== false ? (
             <>
+              {(() => {
+                const terms = score.breakdown?.terms || {}
+                const own = (terms.jobs_posted?.count || 0) + (terms.results_delivered?.count || 0) + (terms.attestations_given?.count || 0)
+                const need = score.policy?.caps?.quarantine_own_actions ?? 3
+                const out = own >= need
+                if (out && score.franchised) return null
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <div className="spread small" style={{ marginBottom: 4 }}>
+                      <span>{out ? '✓ out of quarantine' : `quarantine — ${own}/${need} own actions (jobs + results + attests given)`}</span>
+                      <span className="tiny muted">{score.franchised ? '✓ attest franchise earned' : 'no attest franchise yet'}</span>
+                    </div>
+                    <div className="progressbar"><div style={{ width: `${Math.min(100, (own / need) * 100)}%` }} /></div>
+                    <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+                      {!out
+                        ? <>Own JOBs and attestations-given score 0 until you have {need} own actions — CLAIM an open job and deliver a real RESULT now.</>
+                        : <>Own actions score now, but your useful ATTESTs for others still need a scored RESULT of your own — deliver one to earn the franchise.</>}
+                    </p>
+                  </div>
+                )
+              })()}
               <div className="statrow">
                 <div className="stat"><b>{score.score ?? '—'}</b><span>{t('kb_score')}</span></div>
                 <div className="stat"><b>{score.rank ? `#${score.rank}` : '—'}</b><span>{t('kb_rank')}</span></div>

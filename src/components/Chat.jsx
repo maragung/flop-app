@@ -1,13 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { listRooms, readRoom, fmtTs, ROOM_NAME_OK } from '../lib/technocore.js'
 import { parseLine } from '../lib/kibble.js'
 import { signedPost, unsignedPost } from '../lib/actions.js'
+import { SCAN_ROOMS } from '../lib/contrib.js'
 import { shortAny } from '../lib/did.js'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { useI18n } from '../lib/i18n.js'
 
-const SUGGESTED = ['lobby', 'kibble', 'technocore', 'flop', 'validators', 'meta']
+const SUGGESTED = SCAN_ROOMS
+
+// Local quality lint, checked BEFORE the message leaves the browser. Greetings,
+// sub-140-character posts and duplicates are exactly the farming patterns the
+// airdrop guide's never-do list names — this gate keeps them from happening
+// by accident, while "Send anyway" keeps the user in charge.
+const GREETING_ONLY = /^\s*(gm|gm ser|gmser|hello|hi|hey|yo|sup|good (morning|afternoon|evening|night)|nice|cool|great|wow|ok|okay|k|thanks|thank you|thx|ty|congrats|congratulations|based|wagmi|ngmi|lfg)[\s!.,~👍🔥💪🚀]*$/i
+
+export function lintMessage(msg, msgs, myDid) {
+  const out = []
+  const s = msg.trim()
+  if (!s) return out
+  if (GREETING_ONLY.test(s)) {
+    out.push('greeting-only — the tracker will never count this as a meaningful post, and greeting spam is on the never-do list')
+  } else if (s.length < 140) {
+    out.push(`${s.length} characters — the "post something meaningful" task needs a signed message of ≥ 140 characters`)
+  }
+  if (myDid) {
+    const norm = (x) => x.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (msgs.some((m) => m.from === myDid && norm(m.text) === norm(s))) {
+      out.push('exact duplicate of a message you already posted in this room — the server refuses reposts (422) and duplicates are a farming signal')
+    }
+  }
+  return out
+}
 
 function MessageLine({ m }) {
   const parsed = parseLine(m.text)
@@ -44,6 +69,7 @@ export default function Chat() {
   const [custom, setCustom] = useState('')
   const [auto, setAuto] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [askQuality, setAskQuality] = useState(false)
   const boxRef = useRef(null)
   const sinceRef = useRef(null)
   sinceRef.current = since
@@ -86,10 +112,16 @@ export default function Chat() {
     if (el) el.scrollTop = el.scrollHeight
   }, [msgs])
 
-  const send = async () => {
+  const lint = useMemo(
+    () => lintMessage(text, msgs, sign && identity ? identity.did : null),
+    [text, msgs, sign, identity],
+  )
+
+  const send = async (force) => {
     setErr(''); setFlash(''); setBusy(true)
     const msg = text.trim()
     if (!msg) return setBusy(false)
+    if (!force && lint.length) { setAskQuality(true); return setBusy(false) }
     try {
       if (sign && identity) {
         await signedPost(store, room, msg)
@@ -101,6 +133,7 @@ export default function Chat() {
       }
       store.addJournal('chat', `${room}: ${msg.slice(0, 180)}`)
       setText('')
+      setAskQuality(false)
       setTimeout(() => load(false), 1500)
     } catch (e) {
       setErr(e.message)
@@ -190,13 +223,27 @@ export default function Chat() {
         <label>{t('ch_msg_label')}</label>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); setAskQuality(false) }}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send() }}
           placeholder={t('ch_msg_ph').replace('{room}', room)}
         />
+        {lint.length > 0 && (
+          <div className="note warn small" style={{ marginTop: 8 }}>
+            <b>Quality check — this post won't help your eligibility:</b>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+              {lint.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+            {askQuality && (
+              <div className="row" style={{ marginTop: 8 }}>
+                <button className="small primary" disabled={busy} onClick={() => send(true)}>Send anyway</button>
+                <button className="small" onClick={() => setAskQuality(false)}>✏ Keep editing</button>
+              </div>
+            )}
+          </div>
+        )}
         <div className="spread" style={{ marginTop: 8 }}>
           <span className="tiny muted">{text.length}/4096 · same text reposted within a few seconds is refused (422) — rephrase instead</span>
-          <button className="primary" disabled={busy || !text.trim()} onClick={send}>
+          <button className="primary" disabled={busy || !text.trim()} onClick={() => send()}>
             {busy ? <><BtnSpin /> {t('ch_sending')}</> : t('ch_send')}
           </button>
         </div>

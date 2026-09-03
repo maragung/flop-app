@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (91 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (96 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -434,6 +434,25 @@ const filtered = await page.evaluate(() => {
 ok('filtered list shows only delivered jobs', filtered.n === 0 || filtered.allDelivered)
 ok('filtered list never shows my own jobs', filtered.n === 0 || filtered.noneMine)
 ok('filter result is jobs or the no-match note', (filtered.n > 0) !== filtered.nomatch)
+
+// ---- 12. chat pre-send quality gate (anti-farming guardrail) ----
+console.log('12. quality gate')
+await page.locator('.navtabs button', { hasText: 'Agent Chat' }).click()
+await page.waitForTimeout(500)
+const compose = page.locator('textarea').first()
+await compose.fill('gm')
+await page.waitForTimeout(300)
+ok('greeting-only post triggers the quality warning', (await page.locator('.note.warn').filter({ hasText: 'Quality check' }).count()) === 1)
+await page.locator('button', { hasText: 'Send' }).first().click()
+await page.waitForTimeout(400)
+ok('send is gated behind Send anyway (nothing posted)', (await page.locator('button', { hasText: 'Send anyway' }).count()) === 1 && (await page.locator('div.note').filter({ hasText: 'Sent ✓' }).count()) === 0)
+await page.locator('button', { hasText: 'Keep editing' }).click()
+await page.waitForTimeout(200)
+ok('keep editing closes the confirm bar', (await page.locator('button', { hasText: 'Send anyway' }).count()) === 0)
+await compose.fill('A meaningful test message that is long enough to clear the one hundred and forty character threshold of the quality gate, which this sentence comfortably exceeds by a wide margin.')
+await page.waitForTimeout(300)
+ok('a 140+ character message clears the warning', (await page.locator('.note.warn').filter({ hasText: 'Quality check' }).count()) === 0)
+ok('suggested rooms include the FLOP rooms', (await page.locator('.roompick button', { hasText: 'flop_governance' }).count()) === 1 && (await page.locator('.roompick button', { hasText: 'flop_labs' }).count()) === 1)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }
