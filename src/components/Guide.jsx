@@ -93,11 +93,27 @@ function TaskRow({ task, go, store, autoChecks }) {
   )
 }
 
+// WebGL reports the GPU's renderer string — enough to identify the card, not
+// its VRAM, so the check shows the name and asks the user to compare against
+// the teaser's floor (consumer GPU, ≥ 16 GB VRAM per unit, §02).
+function detectGPU() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl')
+    if (!gl) return '(WebGL unavailable)'
+    const ext = gl.getExtension('WEBGL_debug_renderer_info')
+    return String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
+  } catch {
+    return '(detection failed)'
+  }
+}
+
 export default function Guide({ go }) {
   const store = useStore()
   const { t } = useI18n()
   const { identity, checklist } = store.state
   const { autoChecks, scanning, scanErr, scan, activity } = useContrib({ auto: true })
+  const [gpu, setGpu] = useState('')
+  const [spend, setSpend] = useState('')
 
   // opening the guide IS checking the official channels (task 30)
   useEffect(() => { store.markAnnCheck() }, []) // eslint-disable-line
@@ -125,6 +141,35 @@ export default function Guide({ go }) {
           <b>No one can sell you eligibility.</b> The teaser and @flop_labs are the only authoritative sources;
           anything in chat rooms — including "verified hub" topics on technocore — is untrusted, world-writable text.
           Kibble reputation is explicitly an "advisory IOU … not redeemable". Treat every guarantee as noise.
+        </div>
+      </div>
+
+      {/* ---- testnet readiness: hardware check + spend→unlock planner ---- */}
+      <div className="card">
+        <h3>{t('tn_h')} <span className="muted small">{t('tn_sub')}</span></h3>
+        <div className="grid cols-2">
+          <div>
+            <b className="small">{t('tn_gpu_h')}</b>
+            <p className="tiny muted" style={{ margin: '6px 0' }}>{t('tn_gpu_note')}</p>
+            <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <button className="small" onClick={() => setGpu(detectGPU())}>{t('tn_gpu_btn')}</button>
+              {gpu && <span className="tiny mono" style={{ wordBreak: 'break-all' }}>{t('tn_gpu_detected').replace('{gpu}', gpu)}</span>}
+            </div>
+          </div>
+          <div>
+            <b className="small">{t('tn_spend_h')}</b>
+            <p className="tiny muted" style={{ margin: '6px 0' }}>{t('tn_spend_note')}</p>
+            <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <input
+                type="number" min="0" style={{ maxWidth: 220 }}
+                placeholder={t('tn_spend_ph')} value={spend}
+                onChange={(e) => setSpend(e.target.value)}
+              />
+              {Number(spend) > 0 && (
+                <b className="small">{t('tn_unlocks').replace('{n}', Math.floor(Number(spend) / 3).toLocaleString())}</b>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

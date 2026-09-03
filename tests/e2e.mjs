@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (96 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (100 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -453,6 +453,22 @@ await compose.fill('A meaningful test message that is long enough to clear the o
 await page.waitForTimeout(300)
 ok('a 140+ character message clears the warning', (await page.locator('.note.warn').filter({ hasText: 'Quality check' }).count()) === 0)
 ok('suggested rooms include the FLOP rooms', (await page.locator('.roompick button', { hasText: 'flop_governance' }).count()) === 1 && (await page.locator('.roompick button', { hasText: 'flop_labs' }).count()) === 1)
+
+// ---- 13. testnet readiness (GPU check + spend→unlock calculator) ----
+console.log('13. testnet readiness')
+await page.locator('.navtabs button', { hasText: 'Airdrop Guide' }).click()
+await page.waitForTimeout(600)
+const gpuBtn = page.locator('button', { hasText: 'Detect my GPU' })
+ok('GPU detect button present', await gpuBtn.count() === 1)
+await gpuBtn.click()
+await page.waitForTimeout(300)
+const det = await page.evaluate(() => [...document.querySelectorAll('span')].map((s) => s.textContent).find((x) => x.includes('Detected renderer:')) || '')
+ok('GPU detection renders a renderer string', /Detected renderer: (?!$)/.test(det) && det.length > 'Detected renderer: '.length + 2)
+const spendInput = page.locator('input[type="number"]')
+ok('spend calculator input present', await spendInput.count() === 1)
+await spendInput.fill('300')
+await page.waitForTimeout(300)
+ok('spend calculator computes the 3:1 unlock', (await page.locator('b').filter({ hasText: 'unlocks ≈ 100' }).count()) === 1)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }
