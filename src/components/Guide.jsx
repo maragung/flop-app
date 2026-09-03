@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
 import { taskDone, scanRoomsWith } from '../lib/contrib.js'
+import { buildTaskTweet, tweetUrl } from '../lib/share.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
 import { shortDid } from '../lib/did.js'
@@ -86,6 +87,21 @@ function TaskRow({ task, go, store, autoChecks }) {
           </span>
         )}
       </span>
+      {done && store.state.identity && (
+        <button
+          className="sharebtn"
+          title={t('tw_share')}
+          aria-label={t('tw_share')}
+          onClick={() => {
+            const id = store.state.identity
+            const tw = buildTaskTweet(t, task.id, id.did, store.state.tweetsUsed[task.id] || [])
+            store.noteTweetUsed(task.id, tw.combo)
+            window.open(tweetUrl(tw.text), '_blank', 'noopener')
+          }}
+        >
+          𝕏
+        </button>
+      )}
       <span className={`badge ${done ? 'useful' : ''}`} title={auto?.done ? 'Detected automatically from live data' : manual ? 'Marked done by you' : 'Not done yet'}>
         {done ? (auto?.done ? t('gd_b_auto') : t('gd_b_done')) : t('gd_b_todo')}
       </span>

@@ -207,6 +207,12 @@ main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 16px 16
 .checkitem:last-child { border-bottom: none; }
 .checkitem.is-done .linkbtn, .checkitem.is-done .small { opacity: .75; }
 .checkitem input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin-top: 2px; }
+.checkitem .sharebtn {
+  flex: none; margin-top: 1px; padding: 2px 8px; font-size: 13px; line-height: 1.4;
+  font-weight: 700; color: var(--muted); background: var(--base-2);
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.checkitem .sharebtn:hover { color: var(--text); border-color: var(--accent); }
 .autodot {
   width: 18px; height: 18px; flex: none; margin-top: 2px;
   display: inline-flex; align-items: center; justify-content: center;

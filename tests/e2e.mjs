@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (121 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (125 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -544,6 +544,24 @@ ok('footer shows the builder DID', (await page.locator('.appfoot .didfoot').text
 await page.locator('.appfoot .didfoot').click()
 await page.waitForTimeout(300)
 ok('footer DID is click-to-copy', (await page.locator('.appfoot .didfoot').textContent()).includes('copied ✓'))
+
+// ---- 15. share-on-X: unique tweet per completed task, DID at the bottom ----
+console.log('15. share on X')
+await page.locator('.navtabs button', { hasText: 'Airdrop Guide' }).click()
+await page.waitForTimeout(500)
+const shareBtns = page.locator('.checkitem .sharebtn')
+ok('completed tasks show a share-on-X button', await shareBtns.count() >= 1)
+await page.evaluate(() => { window.__opens = []; window.open = (u) => { window.__opens.push(u); return null } })
+await shareBtns.first().click()
+await page.waitForTimeout(200)
+await shareBtns.first().click()
+await page.waitForTimeout(200)
+const twUrls = await page.evaluate(() => window.__opens)
+const twTexts = twUrls.map((u) => decodeURIComponent(u.replace('https://x.com/intent/tweet?text=', '')))
+const myDid = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.did)
+ok('share opens the X intent with the DID at the bottom', twUrls.length === 2 && twUrls[0].startsWith('https://x.com/intent/tweet?text=') && twTexts.every((x) => x.trim().endsWith(myDid)))
+ok('two shares of the same task never compose the same tweet', twTexts[0] !== twTexts[1])
+ok('tweet stays inside the 278-char cap', twTexts.every((x) => x.length <= 278))
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }

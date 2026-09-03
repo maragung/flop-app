@@ -24,6 +24,7 @@ export function emptyState() {
     chat: { nick: 'anon', lastRoom: 'lobby' },
     roomVisits: {}, // room -> { n, first, last }
     postedRooms: {}, // room -> ISO ts of the last SIGNED post this app made there (extends the tracker's scan)
+    tweetsUsed: {}, // task id -> [[openerKey, closerKey], …] tweet combinations already shared (anti-duplicate)
     signVerifiedAt: null,
     lastAnnCheck: null,
     autoDone: {}, // auto key -> ISO ts first detected done (sticky: scans only see the recent window)
@@ -207,6 +208,11 @@ export function StoreProvider({ children }) {
         s.roomVisits[room] = { n: v.n + 1, first: v.first, last: new Date().toISOString() }
       }),
       notePostedRoom: (room) => update((s) => { s.postedRooms[room] = new Date().toISOString() }),
+      noteTweetUsed: (taskId, combo) => update((s) => {
+        const list = s.tweetsUsed[taskId] || []
+        if (!list.some((u) => u[0] === combo[0] && u[1] === combo[1])) list.push(combo)
+        s.tweetsUsed[taskId] = list
+      }),
       markSignVerified: () => update((s) => { s.signVerifiedAt = new Date().toISOString() }),
       markAutoDones: (keys) => update((s) => {
         const fresh = (keys || []).filter((k) => k && !s.autoDone[k])
