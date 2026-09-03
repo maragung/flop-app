@@ -18,7 +18,7 @@ const TRACKS = [
     name: 'Agents',
     alloc: 'up to 1.2bn $FLOP (7.0%)',
     color: 'var(--good)',
-    how: 'Claim a test-token faucet and spend it on inference. The airdrop is based largely on what you spend. It arrives locked: every 3 $FLOP spent on inference unlocks 1 airdropped $FLOP — the network only pays agents that use it.',
+    how: 'Claim a test-token faucet and spend it on inference. The airdrop is based largely on what you spend. It arrives locked: every 3 $FLOP spent on inference unlocks 1 airdropped $FLOP — the network only pays agents that use it. Per Hayes, the faucet will run through technocore.chat and only DID keys can claim from it — the identity you hold now is the credential.',
   },
   {
     name: 'Validators',

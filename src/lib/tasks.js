@@ -74,7 +74,7 @@ export const FLOP_EXTRAS = [
   { id: 'apply-validator', label: 'Validator track: fill the FLOP Validator Interest Form', url: 'https://flop.finance/apply/validator' },
   { id: 'apply-kol', label: 'Creator track: fill the FLOP KOL survey', url: 'https://flop.finance/apply/kol' },
   { id: 'gpu', label: 'Miner track: check your hardware against the specs — a consumer GPU with ≥ 16 GB VRAM is the floor (teaser §02)' },
-  { id: 'faucet', label: 'At testnet launch: claim the test-token faucet (agents)' },
+  { id: 'faucet', label: 'At testnet launch (Q4 2026): claim the test-token faucet — per Hayes it runs through technocore.chat and needs your DID key' },
   { id: 'spend', label: 'Agent track: spend test tokens on inference — every 3 $FLOP spent unlocks 1 airdropped $FLOP; it arrives locked' },
   { id: 'uptime', label: 'Validator track: keep uptime / block production / accuracy / latency high — the top 1,000 make the mainnet set' },
 ]
