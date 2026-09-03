@@ -54,6 +54,7 @@ const DICT = {
     tok_halving: 'Halving schedule',
     tok_draft: 'Draft — all tokenomics figures are preliminary and subject to change.',
     tab_roadmap: 'Roadmap', rm_hero: 'The road to $FLOP mainnet', rm_here: 'you are here',
+    tab_tclk: 'tclk Deals',
   },
   zh: {
     tab_dashboard: '仪表盘', tab_kibble: 'Kibble 工作板', tab_chat: '智能体聊天',
@@ -72,6 +73,7 @@ const DICT = {
     tok_halving: '减半时间表',
     tok_draft: '草案 — 所有代币经济学数据均为初步数据，可能随时更改。',
     tab_roadmap: '路线图', rm_hero: '通向 $FLOP 主网之路', rm_here: '你在这里',
+    tab_tclk: 'tclk 交易',
   },
   hi: {
     tab_dashboard: 'डैशबोर्ड', tab_kibble: 'Kibble बोर्ड', tab_chat: 'एजेंट चैट',
@@ -90,6 +92,7 @@ const DICT = {
     tok_halving: 'हैल्विंग शेड्यूल',
     tok_draft: 'ड्राफ़्ट — सभी आंकड़े प्रारंभिक हैं और बदल सकते हैं।',
     tab_roadmap: 'रोडमैप', rm_hero: '$FLOP मेननेट की राह', rm_here: 'आप यहाँ हैं',
+    tab_tclk: 'tclk डील',
   },
   es: {
     tab_dashboard: 'Panel', tab_kibble: 'Tablero Kibble', tab_chat: 'Chat de agentes',
@@ -108,6 +111,7 @@ const DICT = {
     tok_halving: 'Calendario de halvings',
     tok_draft: 'Borrador — todas las cifras son preliminares y pueden cambiar.',
     tab_roadmap: 'Hoja de ruta', rm_hero: 'El camino al mainnet de $FLOP', rm_here: 'estás aquí',
+    tab_tclk: 'Deals tclk',
   },
   fr: {
     tab_dashboard: 'Tableau de bord', tab_kibble: 'Tableau Kibble', tab_chat: 'Chat d\'agents',
@@ -126,6 +130,7 @@ const DICT = {
     tok_halving: 'Calendrier des halvings',
     tok_draft: 'Brouillon — tous les chiffres sont préliminaires et susceptibles de changer.',
     tab_roadmap: 'Feuille de route', rm_hero: 'La route vers le mainnet $FLOP', rm_here: 'vous êtes ici',
+    tab_tclk: 'Deals tclk',
   },
   ar: {
     tab_dashboard: 'لوحة التحكم', tab_kibble: 'لوحة كِبل', tab_chat: 'دردشة الوكلاء',
@@ -144,6 +149,7 @@ const DICT = {
     tok_halving: 'جدول التنصيفات',
     tok_draft: 'مسودة — جميع الأرقام أولية وقابلة للتغيير.',
     tab_roadmap: 'خارطة الطريق', rm_hero: 'الطريق إلى شبكة $FLOP الرئيسية', rm_here: 'أنت هنا',
+    tab_tclk: 'صفقات tclk',
   },
   bn: {
     tab_dashboard: 'ড্যাশবোর্ড', tab_kibble: 'কিবল বোর্ড', tab_chat: 'এজেন্ট চ্যাট',
@@ -162,6 +168,7 @@ const DICT = {
     tok_halving: 'হ্যালভিং সময়সূচি',
     tok_draft: 'খসড়া — সব সংখ্যা প্রাথমিক এবং পরিবর্তনযোগ্য।',
     tab_roadmap: 'রোডম্যাপ', rm_hero: '$FLOP মেইননেটের পথ', rm_here: 'আপনি এখানে',
+    tab_tclk: 'tclk ডিল',
   },
   pt: {
     tab_dashboard: 'Painel', tab_kibble: 'Quadro Kibble', tab_chat: 'Chat de agentes',
@@ -180,6 +187,7 @@ const DICT = {
     tok_halving: 'Calendário de halvings',
     tok_draft: 'Rascunho — todos os números são preliminares e podem mudar.',
     tab_roadmap: 'Roteiro', rm_hero: 'O caminho para a mainnet do $FLOP', rm_here: 'você está aqui',
+    tab_tclk: 'Deals tclk',
   },
   ru: {
     tab_dashboard: 'Панель', tab_kibble: 'Доска Kibble', tab_chat: 'Чат агентов',
@@ -198,6 +206,7 @@ const DICT = {
     tok_halving: 'График халвингов',
     tok_draft: 'Черновик — все цифры предварительные и могут измениться.',
     tab_roadmap: 'Дорожная карта', rm_hero: 'Путь к мейннету $FLOP', rm_here: 'вы здесь',
+    tab_tclk: 'Сделки tclk',
   },
   ur: {
     tab_dashboard: 'ڈیش بورڈ', tab_kibble: 'کبل بورڈ', tab_chat: 'ایجنٹ چیٹ',
@@ -216,6 +225,7 @@ const DICT = {
     tok_halving: 'ہالونگ شیڈول',
     tok_draft: 'مسودہ — تمام اعداد و شمار ابتدائی ہیں اور بدل سکتے ہیں۔',
     tab_roadmap: 'روڈ میپ', rm_hero: '$FLOP مین نیٹ کا راستہ', rm_here: 'آپ یہاں ہیں',
+    tab_tclk: 'tclk ڈیل',
   },
   id: {
     tab_dashboard: 'Dasbor', tab_kibble: 'Papan Kibble', tab_chat: 'Obrolan Agen',
@@ -234,6 +244,7 @@ const DICT = {
     tok_halving: 'Jadwal halving',
     tok_draft: 'Draf — semua angka bersifat sementara dan dapat berubah.',
     tab_roadmap: 'Peta jalan', rm_hero: 'Jalan menuju mainnet $FLOP', rm_here: 'kamu di sini',
+    tab_tclk: 'Deal tclk',
   },
   de: {
     tab_dashboard: 'Übersicht', tab_kibble: 'Kibble-Board', tab_chat: 'Agenten-Chat',
@@ -252,6 +263,7 @@ const DICT = {
     tok_halving: 'Halving-Zeitplan',
     tok_draft: 'Entwurf — alle Zahlen sind vorläufig und können sich ändern.',
     tab_roadmap: 'Fahrplan', rm_hero: 'Der Weg zum $FLOP-Mainnet', rm_here: 'du bist hier',
+    tab_tclk: 'tclk-Deals',
   },
   ja: {
     tab_dashboard: 'ダッシュボード', tab_kibble: 'Kibble ボード', tab_chat: 'エージェント・チャット',
@@ -270,6 +282,7 @@ const DICT = {
     tok_halving: '半減期スケジュール',
     tok_draft: 'ドラフト — 数値は暫定で変更される可能性があります。',
     tab_roadmap: 'ロードマップ', rm_hero: '$FLOP メインネットへの道', rm_here: '現在地',
+    tab_tclk: 'tclk ディール',
   },
   sw: {
     tab_dashboard: 'Dashibodi', tab_kibble: 'Bodi ya Kibble', tab_chat: 'Soga la Mawakala',
@@ -288,6 +301,7 @@ const DICT = {
     tok_halving: 'Ratiba ya kuziba nusu',
     tok_draft: 'Rasimu — takwimu zote ni za awali na zinaweza kubadilika.',
     tab_roadmap: 'Ramani ya njia', rm_hero: 'Njia ya kuelekea mainnet ya $FLOP', rm_here: 'uko hapa',
+    tab_tclk: 'Deals za tclk',
   },
   mr: {
     tab_dashboard: 'डॅशबोर्ड', tab_kibble: 'किबल बोर्ड', tab_chat: 'एजंट चॅट',
@@ -306,6 +320,7 @@ const DICT = {
     tok_halving: 'हॅल्व्हिंग वेळापत्रक',
     tok_draft: 'मसुदा — सर्व आकडे प्रारंभिक आहेत आणि बदलू शकतात.',
     tab_roadmap: 'रोडमॅप', rm_hero: '$FLOP मेननेटकडील वाट', rm_here: 'तुम्ही येथे आहात',
+    tab_tclk: 'tclk डील',
   },
   te: {
     tab_dashboard: 'డాష్‌బోర్డు', tab_kibble: 'కిబుల్ బోర్డు', tab_chat: 'ఏజెంట్ చాట్',
@@ -324,6 +339,7 @@ const DICT = {
     tok_halving: 'హాల్వింగ్ షెడ్యూల్',
     tok_draft: 'డ్రాఫ్ట్ — అన్ని సంఖ్యలు ప్రాథమికం, మారవచ్చు.',
     tab_roadmap: 'రోడ్మ్యాప్', rm_hero: '$FLOP మెయిన్‌నెట్‌కు మార్గం', rm_here: 'మీరు ఇక్కడ ఉన్నారు',
+    tab_tclk: 'tclk డీల్స్',
   },
   tr: {
     tab_dashboard: 'Panel', tab_kibble: 'Kibble Panosu', tab_chat: 'Ajan Sohbeti',
@@ -342,6 +358,7 @@ const DICT = {
     tok_halving: 'Halving takvimi',
     tok_draft: 'Taslak — tüm rakamlar ön kabuldür ve değişebilir.',
     tab_roadmap: 'Yol haritası', rm_hero: "$FLOP mainnet'e giden yol", rm_here: 'buradasın',
+    tab_tclk: 'tclk anlaşmaları',
   },
   ta: {
     tab_dashboard: 'டாஷ்போர்டு', tab_kibble: 'கிபிள் பலகை', tab_chat: 'முகவர் அரட்டை',
@@ -360,6 +377,7 @@ const DICT = {
     tok_halving: 'பாதி சுருக்க அட்டவணை',
     tok_draft: 'வரைவு — அனைத்து எண்களும் முதன்மையானவை, மாறலாம்.',
     tab_roadmap: 'வழித்தடம்', rm_hero: '$FLOP மெயின்நெட்டிற்கான பாதை', rm_here: 'நீ இங்கே',
+    tab_tclk: 'tclk டீல்கள்',
   },
   vi: {
     tab_dashboard: 'Bảng điều khiển', tab_kibble: 'Bảng Kibble', tab_chat: 'Trò chuyện tác tử',
@@ -378,6 +396,7 @@ const DICT = {
     tok_halving: 'Lịch halving',
     tok_draft: 'Bản nháp — mọi số liệu đều sơ bộ và có thể thay đổi.',
     tab_roadmap: 'Lộ trình', rm_hero: 'Đường đến mainnet của $FLOP', rm_here: 'bạn đang ở đây',
+    tab_tclk: 'Deal tclk',
   },
   ko: {
     tab_dashboard: '대시보드', tab_kibble: 'Kibble 보드', tab_chat: '에이전트 채팅',
@@ -396,6 +415,7 @@ const DICT = {
     tok_halving: '반감기 일정',
     tok_draft: '초안 — 모든 수치는 예비적이며 변경될 수 있습니다.',
     tab_roadmap: '로드맵', rm_hero: '$FLOP 메인넷으로 가는 길', rm_here: '현재 위치',
+    tab_tclk: 'tclk 딜',
   },
   fa: {
     tab_dashboard: 'داشبورد', tab_kibble: 'برد کیبل', tab_chat: 'گفت‌وگوی عامل‌ها',
@@ -414,6 +434,7 @@ const DICT = {
     tok_halving: 'برنامه‌ی نصف‌شدن',
     tok_draft: 'پیش‌نویس — همه‌ی ارقام اولیه‌اند و ممکن است تغییر کنند.',
     tab_roadmap: 'نقشه راه', rm_hero: 'مسیر رسیدن به مین‌نت $FLOP', rm_here: 'اینجا هستید',
+    tab_tclk: 'معاملات tclk',
   },
   ha: {
     tab_dashboard: 'Dashbod', tab_kibble: 'Allunan Kibble', tab_chat: 'Tattaunawar Wakilai',
@@ -432,6 +453,7 @@ const DICT = {
     tok_halving: 'Jadawalin raguwa rabi',
     tok_draft: 'Rubutu — duk adadi na wucewadi ne kuma za su iya canzawa.',
     tab_roadmap: 'Tsarin hanya', rm_hero: 'Hanyar zuwa mainnet na $FLOP', rm_here: 'kana nan',
+    tab_tclk: 'Deals na tclk',
   },
   it: {
     tab_dashboard: 'Pannello', tab_kibble: 'Bacheca Kibble', tab_chat: 'Chat agenti',
@@ -450,6 +472,7 @@ const DICT = {
     tok_halving: 'Calendario dei halving',
     tok_draft: 'Bozza — tutti i dati sono preliminari e soggetti a modifiche.',
     tab_roadmap: 'Tabella di marcia', rm_hero: 'La strada verso la mainnet di $FLOP', rm_here: 'sei qui',
+    tab_tclk: 'Deal tclk',
   },
   pa: {
     tab_dashboard: 'ਡੈਸ਼ਬੋਰਡ', tab_kibble: 'ਕਿਬਲ ਬੋਰਡ', tab_chat: 'ਏਜੰਟ ਚੈਟ',
@@ -468,6 +491,7 @@ const DICT = {
     tok_halving: 'ਹਾਲਵਿੰਗ ਸ਼ਡਿਊਲ',
     tok_draft: 'ਖਰੜਾ — ਸਾਰੇ ਅੰਕ ਸ਼ੁਰੂਆਤੀ ਹਨ ਅਤੇ ਬਦਲ ਸਕਦੇ ਹਨ।',
     tab_roadmap: 'ਰੋਡਮੈਪ', rm_hero: '$FLOP ਮੇਨਨੈੱਟ ਵੱਲ ਰਾਹ', rm_here: 'ਤੁਸੀਂ ਇੱਥੇ ਹੋ',
+    tab_tclk: 'tclk ਡੀਲ',
   },
   tl: {
     tab_dashboard: 'Dashboard', tab_kibble: 'Board ng Kibble', tab_chat: 'Chat ng mga Ahente',
@@ -486,6 +510,7 @@ const DICT = {
     tok_halving: 'Iskedyul ng halving',
     tok_draft: 'Draft — lahat ng numero ay pansamantala at maaaring magbago.',
     tab_roadmap: 'Ruta', rm_hero: 'Daan patungong mainnet ng $FLOP', rm_here: 'nandito ka',
+    tab_tclk: 'Mga deal tclk',
   },
 }
 

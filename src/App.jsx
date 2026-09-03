@@ -9,6 +9,7 @@ import { useContrib } from './lib/useContrib.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import Identity from './components/Identity.jsx'
 import Kibble from './components/Kibble.jsx'
+import Tclk from './components/Tclk.jsx'
 import Chat from './components/Chat.jsx'
 import Guide from './components/Guide.jsx'
 import Tokenomics from './components/Tokenomics.jsx'
@@ -22,6 +23,7 @@ const MY_DID = 'did:key:z6MkeZAT641SbbXmAUqP8yZe2UqpFnRLC9XihYkQR2EherwJ'
 const TABS = [
   { id: 'dashboard', key: 'tab_dashboard', ico: '◎' },
   { id: 'kibble', key: 'tab_kibble', ico: '▩' },
+  { id: 'tclk', key: 'tab_tclk', ico: '⛓' },
   { id: 'chat', key: 'tab_chat', ico: '✦' },
   { id: 'guide', key: 'tab_guide', ico: '◈' },
   { id: 'tokenomics', key: 'tab_tokenomics', ico: '⬢' },
@@ -177,6 +179,7 @@ export default function App() {
       <main>
         {tab === 'dashboard' && <Dashboard go={go} />}
         {tab === 'kibble' && <Kibble />}
+        {tab === 'tclk' && <Tclk />}
         {tab === 'chat' && <Chat />}
         {tab === 'guide' && <Guide go={go} />}
         {tab === 'tokenomics' && <Tokenomics />}

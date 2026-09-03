@@ -192,6 +192,26 @@ main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 16px 16
   font-size: 12px; font-weight: 700;
 }
 
+/* ---- tclk (agent-to-agent deals) ---- */
+
+.tkflow { overflow-x: auto; background: var(--base-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 11px; line-height: 1.5; }
+/* a tclk1 frame line — mono, wrapped, never overflowing the card */
+.tkline {
+  background: var(--base-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; word-break: break-all; white-space: pre-wrap; margin-top: 4px;
+}
+/* dry-run + fold logs */
+.tklog { display: grid; gap: 8px; margin-top: 10px; }
+.tkstep { border-left: 2px solid var(--line); padding-left: 10px; }
+.tkstep.bad { border-left-color: var(--bad); }
+/* tclk contract statuses */
+.badge.tk-proposed { color: var(--warn); border-color: var(--warn); }
+.badge.tk-accepted { color: var(--accent); border-color: var(--accent); }
+.badge.tk-locked { color: var(--accent); border-color: var(--accent); }
+.badge.tk-claimed { color: var(--good); border-color: var(--good); }
+.badge.tk-refunded { color: var(--dim); border-color: var(--dim); }
+.badge.tk-cancelled { color: var(--bad); border-color: var(--bad); }
+
 /* ---- chat ---- */
 
 .chatwrap { display: flex; flex-direction: column; gap: 10px; }

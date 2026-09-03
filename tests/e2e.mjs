@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (129 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (140 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -297,7 +297,7 @@ await mp.setViewportSize({ width: 390, height: 800 })
 await mp.goto(URL, { waitUntil: 'networkidle' })
 await mp.waitForTimeout(500)
 const tabs = await mp.locator('.tabbar-mobile button').allTextContents()
-ok('mobile tabbar shows 9 tabs', tabs.length === 9)
+ok('mobile tabbar shows 10 tabs', tabs.length === 10)
 ok('mobile tokenomics short label', tabs.some((x) => x.includes('Tokenomics')))
 await mp.screenshot({ path: '/tmp/pwtest/shot-mobile.png' })
 
@@ -572,6 +572,51 @@ const myDid = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-to
 ok('share opens the X intent with the DID at the bottom', twUrls.length === 2 && twUrls[0].startsWith('https://x.com/intent/tweet?text=') && twTexts.every((x) => x.trim().endsWith(myDid)))
 ok('two shares of the same task never compose the same tweet', twTexts[0] !== twTexts[1])
 ok('tweet stays inside the 278-char cap', twTexts.every((x) => x.length <= 278))
+
+// ---- 16. tclk tab: dry run, decoder, builder ----
+console.log('16. tclk')
+await page.locator('.navtabs button', { hasText: 'tclk Deals' }).click()
+await page.waitForTimeout(500)
+ok('tclk intro card present', await page.locator('[data-testid="tclk-intro"]').count() === 1)
+ok('tab click sets the tclk hash', page.url().endsWith('#tclk'))
+// dry run: the full offer → accept → lock → reveal walk on the real state machine
+const dr = page.locator('[data-testid="tclk-dryrun"]')
+ok('dry run starts with no status badge', (await dr.locator('.badge.tk-proposed, .badge.tk-accepted, .badge.tk-locked, .badge.tk-claimed').count()) === 0)
+await dr.locator('button', { hasText: 'post offer' }).click()
+await page.waitForTimeout(100)
+ok('offer → proposed', (await dr.locator('.badge.tk-proposed').count()) === 1)
+await dr.locator('button', { hasText: 'accept + mint lock' }).click()
+await page.waitForTimeout(100)
+ok('accept → accepted', (await dr.locator('.badge.tk-accepted').count()) === 1)
+await dr.locator('button', { hasText: 'lock on paper' }).click()
+await page.waitForTimeout(100)
+ok('lock → locked', (await dr.locator('.badge.tk-locked').count()) === 1)
+await dr.locator('button', { hasText: 'try a wrong secret' }).click()
+await page.waitForTimeout(100)
+const wrongTxt = (await dr.locator('[data-testid="tclk-dryrun-log"] .tkstep.bad').allTextContents()).join(' ')
+ok('wrong secret is rejected and the deal stays locked',
+  (await dr.locator('.badge.tk-locked').count()) === 1 && wrongTxt.includes('✗'))
+await dr.locator('button', { hasText: 'reveal secret' }).click()
+await page.waitForTimeout(100)
+ok('real secret → claimed', (await dr.locator('.badge.tk-claimed').count()) === 1)
+// decoder: garbage in → rejection; a real frame from the dry-run log → decoded
+const dec = page.locator('[data-testid="tclk-decoder"]')
+await dec.locator('textarea').fill('this is not a tclk line')
+ok('decoder rejects a non-tclk line', (await dec.locator('[data-testid="tclk-decode-bad"]').textContent()).includes('tclk1'))
+const offerLine = (await dr.locator('.tkline').first().textContent()).trim()
+await dec.locator('textarea').fill(offerLine)
+ok('decoder decodes a real tclk1 frame',
+  (await dec.locator('[data-testid="tclk-decode-ok"]').count()) === 1 &&
+  (await dec.locator('[data-testid="tclk-decode-ok"] pre').textContent()).includes('"type": "offer"'))
+// builder: identity exists by this point in the suite — build a real offer frame
+const bld = page.locator('[data-testid="tclk-builder"]')
+ok('builder shows no missing-identity warning', (await bld.locator('p.tiny').count()) === 0)
+await bld.locator('button', { hasText: 'Build offer' }).click()
+await page.waitForTimeout(200)
+const builtLine = (await bld.locator('[data-testid="tclk-offer-line"]').textContent()).trim()
+ok('builder emits a tclk1 offer line', builtLine.startsWith('tclk1 ') && builtLine.includes('"type":"offer"'))
+// live deals: the fold card renders (rows depend on the public room's content)
+ok('live deals card present', await page.locator('[data-testid="tclk-live"]').count() === 1)
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (errors.length) { console.log('PAGE ERRORS:'); errors.forEach((e) => console.log('  ' + e)) }
