@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS } from '../lib/tasks.js'
 import { taskDone } from '../lib/contrib.js'
@@ -13,26 +13,62 @@ function daysUntil(iso) {
   return Math.ceil((new Date(iso) - new Date()) / 864e5)
 }
 
+// A lastGood slot is usable for a row only when it is not gated to another DID
+// (kibble score and tclk stats are per-identity; the board totals are global).
+const slotFor = (lg, key, did) => {
+  const s = lg && lg[key]
+  return s && (s.did == null || did == null || s.did === did) ? s : null
+}
+
 export default function Dashboard({ go }) {
   const store = useStore()
-  const { identity, checklist, journal } = store.state
+  const { identity, checklist, journal, lastGood } = store.state
   const { t } = useI18n()
   const { autoChecks, activity } = useContrib({ auto: true })
-  const [score, setScore] = useState(null)
+  const storeRef = useRef(store)
+  storeRef.current = store
+  // seed from the last-known-good snapshot so a reload shows the previous
+  // numbers instantly, then refresh over them; a failed refresh keeps them.
+  const [score, setScore] = useState(() => slotFor(lastGood, 'kbScore', identity?.did)?.data ?? null)
+  const [scoreAt, setScoreAt] = useState(() => slotFor(lastGood, 'kbScore', identity?.did)?.at ?? null)
   const [scoreErr, setScoreErr] = useState('')
-  const [stats, setStats] = useState(null)
+  const scoreRef = useRef(score)
+  scoreRef.current = score
+  const [stats, setStats] = useState(() => slotFor(lastGood, 'kbStats', null)?.data ?? null)
+  const [statsAt, setStatsAt] = useState(() => slotFor(lastGood, 'kbStats', null)?.at ?? null)
   const [statsErr, setStatsErr] = useState('')
+  const statsRef = useRef(stats)
+  statsRef.current = stats
   const [copiedDid, setCopiedDid] = useState(false)
 
-  const loadStats = useCallback(() => {
+  const loadStats = useCallback(async () => {
     setStatsErr('')
-    kibbleStats().then(setStats).catch((e) => { setStats(null); setStatsErr(e) })
+    try {
+      const d = await kibbleStats()
+      setStats(d)
+      setStatsAt(new Date().toISOString())
+      storeRef.current.setLastGood('kbStats', { at: new Date().toISOString(), data: d })
+    } catch (e) {
+      const c = slotFor(storeRef.current.state.lastGood, 'kbStats', null)
+      if (statsRef.current == null && c) { setStats(c.data); setStatsAt(c.at) } // keep the last snapshot instead of a blank card
+      else if (statsRef.current == null) setStatsErr(e)
+      // a live snapshot is already on screen — keep it rather than blanking
+    }
   }, [])
 
-  const loadScore = useCallback(() => {
+  const loadScore = useCallback(async () => {
     setScoreErr('')
-    if (!identity) { setScore(null); return }
-    kibbleScore(identity.did).then(setScore).catch((e) => { setScore(null); setScoreErr(e) })
+    if (!identity) { setScore(null); setScoreAt(null); return }
+    try {
+      const d = await kibbleScore(identity.did)
+      setScore(d)
+      setScoreAt(new Date().toISOString())
+      storeRef.current.setLastGood('kbScore', { did: identity.did, at: new Date().toISOString(), data: d })
+    } catch (e) {
+      const c = slotFor(storeRef.current.state.lastGood, 'kbScore', identity.did)
+      if (scoreRef.current == null && c) { setScore(c.data); setScoreAt(c.at) }
+      else if (scoreRef.current == null) setScoreErr(e)
+    }
   }, [identity?.did]) // eslint-disable-line
 
   useEffect(() => {
@@ -114,11 +150,14 @@ export default function Dashboard({ go }) {
               <button className="small ghost" onClick={() => go('kibble')}>open board →</button>
             </div>
             {score && score.found !== false && !score.error ? (
-              <div className="statrow">
-                <div className="stat"><b>{score.score}</b><span>score</span></div>
-                <div className="stat"><b>#{score.rank}</b><span>rank</span></div>
-                <div className="stat"><b>{score.franchised ? 'yes' : 'no'}</b><span>franchise</span></div>
-              </div>
+              <>
+                <div className="statrow">
+                  <div className="stat"><b>{score.score}</b><span>score</span></div>
+                  <div className="stat"><b>#{score.rank}</b><span>rank</span></div>
+                  <div className="stat"><b>{score.franchised ? 'yes' : 'no'}</b><span>franchise</span></div>
+                </div>
+                {scoreAt && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('st_asof').replace('{at}', new Date(scoreAt).toLocaleString())}</p>}
+              </>
             ) : scoreErr ? (
               <ErrorRetry err={`Kibble score: ${scoreErr.message || scoreErr}`} onRetry={loadScore} retryTitle="Retry" />
             ) : (
@@ -157,12 +196,15 @@ export default function Dashboard({ go }) {
             {stats && <span className="tiny muted mono">{stats.score_schema || ''}</span>}
           </div>
           {stats ? (
-            <div className="statrow">
-              <div className="stat"><b>{stats.jobs ?? '—'}</b><span>jobs</span></div>
-              <div className="stat"><b>{stats.open ?? '—'}</b><span>open</span></div>
-              <div className="stat"><b>{stats.delivered ?? '—'}</b><span>to attest</span></div>
-              <div className="stat"><b>{stats.agents ?? '—'}</b><span>agents</span></div>
-            </div>
+            <>
+              <div className="statrow">
+                <div className="stat"><b>{stats.jobs ?? '—'}</b><span>jobs</span></div>
+                <div className="stat"><b>{stats.open ?? '—'}</b><span>open</span></div>
+                <div className="stat"><b>{stats.delivered ?? '—'}</b><span>to attest</span></div>
+                <div className="stat"><b>{stats.agents ?? '—'}</b><span>agents</span></div>
+              </div>
+              {statsAt && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('st_asof').replace('{at}', new Date(statsAt).toLocaleString())}</p>}
+            </>
           ) : statsErr ? (
             <ErrorRetry err={`Board stats: ${statsErr.message || statsErr}`} onRetry={loadStats} retryTitle="Retry" />
           ) : (

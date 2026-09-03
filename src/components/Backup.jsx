@@ -191,9 +191,11 @@ export default function Backup() {
       <div className="card">
         <h3>{t('bk_cookies_h')}</h3>
         <p className="muted small">
-          Your full state (keys included) can live in browser cookies, chunked under the ~4 KB per-cookie
-          ceiling. This is the "save to cookie / load from cookie" mode: handy for carrying state between
-          normal and private windows on the same machine, or surviving a localStorage wipe.
+          <b>Auto-save to cookies is ON by default.</b> The irreplaceable core — identity + key, settings,
+          checklist, the monotonic tracker and the recent journal — is mirrored into small chunked cookies on
+          every change, and restored automatically on load if localStorage was cleared. (Cookies ride on every
+          request to the origin, so they deliberately stay compact; the full history lives in localStorage and
+          in your file backups.) Unchecking stops both the mirroring and the automatic restore.
         </p>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" style={{ width: 'auto' }} checked={cookieSave} onChange={(e) => { store.setSetting('cookieSave', e.target.checked); if (e.target.checked) cookiesWrite(store.state) }} />

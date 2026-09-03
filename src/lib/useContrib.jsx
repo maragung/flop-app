@@ -23,7 +23,7 @@ export function useContrib({ auto = false } = {}) {
     setScanning(true)
     setScanErr('')
     try {
-      store.setActivity(await refreshActivity(identity.did, { rooms: scanRoomsWith(store.state) }))
+      store.recordScan(await refreshActivity(identity.did, { rooms: scanRoomsWith(store.state) }))
     } catch (e) {
       setScanErr(e)
     }

@@ -3,7 +3,7 @@ import { useStore } from './lib/store.jsx'
 import { useI18n, LANGS } from './lib/i18n.js'
 import { shortDid } from './lib/did.js'
 import { copyText } from './lib/util.js'
-import { refreshActivity, taskDone } from './lib/contrib.js'
+import { refreshActivity, scanRoomsWith, taskDone } from './lib/contrib.js'
 import { CONTRIB_TASKS } from './lib/tasks.js'
 import { useContrib } from './lib/useContrib.jsx'
 import Dashboard from './components/Dashboard.jsx'
@@ -89,6 +89,10 @@ export default function App() {
   const [didCopied, setDidCopied] = useState(false)
   const { identity } = store.state
   const theme = store.state.settings.theme === 'light' ? 'light' : 'dark'
+  // a ref mirror of the store, so the interval below reads FRESH state on every
+  // tick instead of the render snapshot it was created with
+  const storeRef = useRef(store)
+  storeRef.current = store
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -97,10 +101,29 @@ export default function App() {
   // scan on every app open: re-read the rooms + score ledger in the background
   // so the tracker reflects your latest activity before you even open the Guide
   useEffect(() => {
-    const did = store.state.identity?.did
+    const s0 = storeRef.current.state
+    const did = s0.identity?.did
     if (!did) return
-    refreshActivity(did).then((a) => store.setActivity(a)).catch(() => {})
+    refreshActivity(did, { rooms: scanRoomsWith(s0) })
+      .then((a) => storeRef.current.recordScan(a)).catch(() => {})
   }, []) // eslint-disable-line
+
+  // recurring auto-scan of your contributions/stats, so the tracker ticks on its
+  // own (real-time ≈ every ~45 s on top of the post-signed re-scan, or 1/5/15
+  // minutes as chosen on the Guide). Scans are merged monotonic — overlapping
+  // scans can't double-count — so this just keeps the data fresh.
+  useEffect(() => {
+    const ms = { now: 45e3, '1m': 6e4, '5m': 3e5, '15m': 9e5 }[store.state.settings.scanEvery]
+    if (!ms) return
+    const id = setInterval(() => {
+      const s = storeRef.current.state
+      const did = s.identity?.did
+      if (!did) return
+      refreshActivity(did, { rooms: scanRoomsWith(s) })
+        .then((a) => storeRef.current.recordScan(a)).catch(() => {})
+    }, ms)
+    return () => clearInterval(id)
+  }, [store.state.settings.scanEvery])
 
   useEffect(() => {
     const onHash = () => setTab(tabFromHash())

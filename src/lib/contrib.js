@@ -41,6 +41,9 @@ export async function scanActivity(did, { rooms = SCAN_ROOMS } = {}) {
   let helloFound = false
   const daySet = new Set()
   const textCounts = new Map()
+  // Signed own-message log for the monotonic "ever" accumulator (store.recordScan
+  // consumes it): each row is counted once per message via its per-room nonce.
+  const mine = []
 
   settled.forEach((res, i) => {
     const room = rooms[i]
@@ -48,17 +51,24 @@ export async function scanActivity(did, { rooms = SCAN_ROOMS } = {}) {
       const msgs = res.value?.messages || []
       perRoom[room] = { visible: msgs.length, mine: 0, signed: 0 }
       msgs.forEach((m, idx) => {
-        const mine = m.from === did
+        const mineMsg = m.from === did
         // a reply: my message immediately follows someone else's
-        if (mine && idx > 0 && msgs[idx - 1].from !== did) {
+        let isReply = false
+        let isAnswer = false
+        if (mineMsg && idx > 0 && msgs[idx - 1].from !== did) {
+          isReply = true
           replies++
           // an answer: my message follows a question from someone else
-          if (msgs.slice(Math.max(0, idx - 5), idx).some((x) => x.from !== did && x.text?.includes('?'))) answers++
+          if (msgs.slice(Math.max(0, idx - 5), idx).some((x) => x.from !== did && x.text?.includes('?'))) {
+            isAnswer = true
+            answers++
+          }
         }
-        if (!mine) return
+        if (!mineMsg) return
         perRoom[room].mine++
         totalPosts++
-        if (room === 'kibble' && /^HELLO v1/.test(m.text || '')) helloFound = true
+        const isHello = room === 'kibble' && /^HELLO v1/.test(m.text || '')
+        if (isHello) helloFound = true
         if (m.ts) daySet.add(String(m.ts).slice(0, 10))
         const len = (m.text || '').length
         if (len > maxLen) maxLen = len
@@ -67,7 +77,13 @@ export async function scanActivity(did, { rooms = SCAN_ROOMS } = {}) {
         if (m.sig) {
           signedPosts++
           perRoom[room].signed++
-          if (verifyRoomMessage(did, room, m.nonce, m.text, m.sig)) verifiedSigs++
+          const verified = verifyRoomMessage(did, room, m.nonce, m.text, m.sig)
+          if (verified) verifiedSigs++
+          mine.push({
+            room, nonce: m.nonce, len,
+            day: m.ts ? String(m.ts).slice(0, 10) : null,
+            verified, reply: isReply, answer: isAnswer, hello: isHello,
+          })
         }
       })
     } else {
@@ -92,6 +108,7 @@ export async function scanActivity(did, { rooms = SCAN_ROOMS } = {}) {
     helloFound,
     roomsPosted,
     lobbySigned: perRoom.lobby?.signed || 0,
+    mine,
   }
 }
 

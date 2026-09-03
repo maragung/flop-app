@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { CONTRIB_TASKS, FLOP_EXTRAS, PHASES, DO_NOT, QUALITY_BAR } from '../lib/tasks.js'
 import { taskDone, scanRoomsWith } from '../lib/contrib.js'
+import { everSummary } from '../lib/ever.js'
 import { buildTaskTweet, tweetUrl } from '../lib/share.js'
 import { useContrib } from '../lib/useContrib.jsx'
 import { Loading, ErrorRetry, BtnSpin } from './Retry.jsx'
@@ -186,6 +187,17 @@ export default function Guide({ go }) {
   const [gpu, setGpu] = useState('')
   const [spend, setSpend] = useState('')
 
+  const ever = identity?.did ? everSummary(store.state.ever?.[identity.did]) : null
+  const scanEvery = store.state.settings.scanEvery || '5m'
+  // The tracker tile reads the MONOTONIC per-DID record when one exists (it only
+  // ever grows as new signed messages are first observed) and falls back to the
+  // recent-window scan before the first merge has run.
+  const tileVals = ever
+    ? [ever.signed, ever.verified, ever.rooms, ever.replies, ever.answers, ever.days]
+    : activity?.scan
+      ? [activity.scan.signedPosts, activity.scan.verifiedSigs, activity.scan.roomsPosted.length, activity.scan.replies, activity.scan.answers, activity.scan.activeDays]
+      : null
+
   // opening the guide IS checking the official channels (task 30)
   useEffect(() => { store.markAnnCheck() }, []) // eslint-disable-line
 
@@ -276,17 +288,34 @@ export default function Guide({ go }) {
         <p className="tiny muted" style={{ margin: '0 0 10px' }}>
           ONE account · ONE DID · {identity ? shortDid(identity.did) : 'no identity yet'} — auto-detected tasks read
           your live room messages, the board's own score ledger and this browser's state. The tracker scans
-          automatically every time you open the app and again a few seconds after every signed post.
+          automatically on every app open, a few seconds after each signed post, and on the auto-refresh cadence
+          below. The six totals below are cumulative since this browser first tracked this DID — they never shrink.
           Nothing self-reported counts.
         </p>
 
         {identity ? (
-          <div className="row" style={{ marginBottom: 8 }}>
-            <button className="small primary" disabled={scanning} onClick={() => scan()}>
-              {scanning ? <><BtnSpin /> {t('gd_scanning')}</> : activity ? t('gd_rescan') : t('gd_scan')}
-            </button>
-            {activity && <span className="tiny muted">{t('gd_last_scan').replace('{at}', new Date(activity.at).toLocaleString()).replace('{n}', activity.scan?.roomsPosted?.length || 0)}</span>}
-          </div>
+          <>
+            <div className="row" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+              <button className="small primary" disabled={scanning} onClick={() => scan()}>
+                {scanning ? <><BtnSpin /> {t('gd_scanning')}</> : activity ? t('gd_rescan') : t('gd_scan')}
+              </button>
+              {activity && <span className="tiny muted">{t('gd_last_scan').replace('{at}', new Date(activity.at).toLocaleString()).replace('{n}', activity.scan?.roomsPosted?.length || 0)}</span>}
+            </div>
+            <div className="row tiny muted" style={{ margin: '0 0 8px', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <span>{t('gd_as_label')}</span>
+              <select
+                value={scanEvery}
+                onChange={(e) => store.setSetting('scanEvery', e.target.value)}
+                aria-label={t('gd_as_label')}
+                style={{ width: 'auto', fontSize: 12, padding: '1px 4px' }}
+              >
+                <option value="now">{t('gd_as_now')}</option>
+                <option value="1m">{t('gd_as_1m')}</option>
+                <option value="5m">{t('gd_as_5m')}</option>
+                <option value="15m">{t('gd_as_15m')}</option>
+              </select>
+            </div>
+          </>
         ) : (
           <p className="small muted" style={{ margin: '0 0 8px' }}>Create an identity first — then the scan can verify your on-chain work. <button className="linkbtn" onClick={() => go('identity')}>{t('gd_identity_link')}</button></p>
         )}
@@ -294,14 +323,17 @@ export default function Guide({ go }) {
         {scanning && <Loading text={`Reading your recent messages in ${scanRoomsWith(store.state).join(', ')}…`} />}
         <ErrorRetry err={scanErr && `Activity scan: ${scanErr.message || scanErr}`} onRetry={scan} retryTitle="Retry scan" />
 
-        {activity?.scan && (
-          <div className="statrow" style={{ margin: '4px 0 10px' }}>
-            <div className="stat"><b>{activity.scan.signedPosts}</b><span>{t('gd_posts')}</span></div>
-            <div className="stat"><b>{activity.scan.verifiedSigs}</b><span>{t('gd_sigs')}</span></div>
-            <div className="stat"><b>{activity.scan.roomsPosted.length}</b><span>{t('gd_rooms')}</span></div>
-            <div className="stat"><b>{activity.scan.replies}</b><span>{t('gd_replies')}</span></div>
-            <div className="stat"><b>{activity.scan.answers}</b><span>{t('gd_answers')}</span></div>
-            <div className="stat"><b>{activity.scan.activeDays}</b><span>{t('gd_days')}</span></div>
+        {tileVals && (
+          <div style={{ margin: '4px 0 10px' }}>
+            <div className="statrow">
+              <div className="stat"><b>{tileVals[0]}</b><span>{t('gd_posts')}</span></div>
+              <div className="stat"><b>{tileVals[1]}</b><span>{t('gd_sigs')}</span></div>
+              <div className="stat"><b>{tileVals[2]}</b><span>{t('gd_rooms')}</span></div>
+              <div className="stat"><b>{tileVals[3]}</b><span>{t('gd_replies')}</span></div>
+              <div className="stat"><b>{tileVals[4]}</b><span>{t('gd_answers')}</span></div>
+              <div className="stat"><b>{tileVals[5]}</b><span>{t('gd_days')}</span></div>
+            </div>
+            {ever && <p className="tiny muted" style={{ margin: '2px 0 0' }}>{t('gd_ever_since').replace('{at}', new Date(ever.firstSeen).toLocaleDateString())}</p>}
           </div>
         )}
 

@@ -18,7 +18,7 @@ export async function signedPost(store, room, text) {
   // The room is included explicitly — the captured store predates notePostedRoom.
   setTimeout(() => {
     const rooms = [...new Set([...scanRoomsWith(store.state), room])]
-    refreshActivity(id.did, { rooms }).then((a) => store.setActivity(a)).catch(() => {})
+    refreshActivity(id.did, { rooms }).then((a) => store.recordScan(a)).catch(() => {})
   }, 2500)
   return { reply, nonce, text: swept }
 }

@@ -232,10 +232,25 @@ export default function Kibble() {
   const store = useStore()
   const { t } = useI18n()
   const me = store.state.identity
+  const { lastGood } = store.state
+  const storeRef = useRef(store)
+  storeRef.current = store
+  // last-known-good fallback: seed from the store's last successful snapshot,
+  // then refresh over it — a reload or a backend hiccup shows the old numbers
+  // (timestamped "as of") instead of a blank card
   const [board, setBoard] = useState(null)
   const [boardErr, setBoardErr] = useState('')
-  const [score, setScore] = useState(null)
+  const [score, setScore] = useState(() => {
+    const s = lastGood && lastGood.kbScore
+    return s && me && s.did === me.did ? s.data : null
+  })
+  const [scoreAt, setScoreAt] = useState(() => {
+    const s = lastGood && lastGood.kbScore
+    return s && me && s.did === me.did ? s.at : null
+  })
   const [scoreErr, setScoreErr] = useState('')
+  const scoreRef = useRef(score)
+  scoreRef.current = score
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyKey, setBusyKey] = useState('')
@@ -252,19 +267,30 @@ export default function Kibble() {
       const b = await kibbleBoard()
       setBoard(b)
       setBoardErr('')
+      // cache the (small) board totals so the top stat row survives the board
+      // being down or a reload — never cache the full job list
+      if (b && b.stats) storeRef.current.setLastGood('kbStats', { at: new Date().toISOString(), data: b.stats })
     } catch (e) {
       if (!quiet) setBoardErr(e)
+      // keep whatever board is already on screen; the job area surfaces the error
     }
   }, [])
 
   const refreshScore = useCallback(async () => {
-    if (!me) return setScore(null)
+    if (!me) { setScore(null); setScoreAt(null); return }
     try {
-      setScore(await kibbleScore(me.did))
-      setScoreErr('')
+      const d = await kibbleScore(me.did)
+      setScore(d)
+      setScoreAt(new Date().toISOString())
+      storeRef.current.setLastGood('kbScore', { did: me.did, at: new Date().toISOString(), data: d })
     } catch (e) {
-      setScore({ error: 'no score yet — post something first' })
-      setScoreErr(e)
+      const c = storeRef.current.state.lastGood && storeRef.current.state.lastGood.kbScore
+      if (scoreRef.current == null && c && c.did === me.did) {
+        setScore(c.data); setScoreAt(c.at) // show the last snapshot, not a blank
+      } else if (scoreRef.current == null) {
+        setScore({ error: 'no score yet — post something first' })
+        setScoreErr(e)
+      }
     }
   }, [me])
 
@@ -307,7 +333,12 @@ export default function Kibble() {
 
   useEffect(() => () => clearTimeout(refreshRef.current), [])
 
-  const stats = board?.stats || {}
+  // totals row: the live board totals; when the board is down but a last-good
+  // snapshot exists, show that instead of dashes — timestamped "as of" below
+  const statsSlot = lastGood && lastGood.kbStats ? lastGood.kbStats : null
+  const boardStats = board?.stats
+  const stats = boardStats || (board === null && statsSlot ? statsSlot.data : {})
+  const statsAsOf = boardStats ? null : (board === null && statsSlot ? statsSlot.at : null)
   const jobs = useMemo(() => {
     let list = board?.jobs || []
     if (onlyAttestable) {
@@ -351,6 +382,7 @@ export default function Kibble() {
           <div className="stat"><b>{stats.agents ?? '—'}</b><span>{t('kb_agents')}</span></div>
           <div className="stat"><b>{stats.score_schema || '—'}</b><span>{t('kb_scoring')}</span></div>
         </div>
+        {statsAsOf && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('st_asof').replace('{at}', new Date(statsAsOf).toLocaleString())}</p>}
         <p className="tiny muted" style={{ marginBottom: 0 }}>
           Advisory reputation only — the board settles nothing; per its own room, "reputation isn't the airdrop
           itself, it's evidence used to help determine it". Score (kibble-score-v2): peer useful ×6 · poster
@@ -406,6 +438,7 @@ export default function Kibble() {
                   </div>
                 ))}
               </div>
+              {scoreAt && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('st_asof').replace('{at}', new Date(scoreAt).toLocaleString())}</p>}
               <p className="tiny mono muted" style={{ marginBottom: 0 }}>{score.formula}</p>
             </>
           ) : scoreErr ? (

@@ -45,6 +45,21 @@ async function settleBoard(page, { wantJobs = false, attempts = 3, budgetMs = 30
   return false
 }
 
+// A fresh-state reset used between sections: clear the localStorage snapshot AND
+// every ftk cookie. cookieSave is default-ON and the store falls back to the
+// cookie snapshot when localStorage is empty — so clearing only localStorage
+// would let a reload resurrect the previous section's state from cookies.
+async function resetFreshState(page) {
+  await page.evaluate(() => {
+    try { localStorage.clear() } catch { /* ignore */ }
+    document.cookie.split(';').forEach((c) => {
+      const n = c.split('=')[0].trim()
+      if (n.startsWith('ftk')) document.cookie = `${n}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+    })
+  })
+  await page.reload({ waitUntil: 'networkidle' })
+}
+
 const browser = await chromium.launch({ executablePath: EXE, args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 1400 }, permissions: ['clipboard-read', 'clipboard-write'] })
 const page = await ctx.newPage()
@@ -261,8 +276,7 @@ await page.waitForTimeout(800)
 const didAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)
 ok('encrypted PEM import restores same DID', didAfter === didBefore)
 // wrong passphrase import rejected
-await page.evaluate(() => { localStorage.clear() })
-await page.reload({ waitUntil: 'networkidle' })
+await resetFreshState(page)
 await page.locator('.navtabs button', { hasText: 'Identity' }).click()
 await page.waitForTimeout(300)
 await page.locator('textarea').first().fill(pem2)
@@ -285,8 +299,7 @@ ok('encrypted PEM file import restores same DID', (await page.evaluate(() => JSO
 const seedHex = await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity.seedHex)
 fs.writeFileSync('/tmp/frombrowser-identity.txt',
   `FLOP Toolkit — did:key identity\nDID: ${didBefore}\nPrivate key (seed, 32 bytes hex): ${seedHex}\nCreated: ${new Date().toISOString()}\n`)
-await page.evaluate(() => { localStorage.clear() })
-await page.reload({ waitUntil: 'networkidle' })
+await resetFreshState(page)
 await page.locator('.navtabs button', { hasText: 'Identity' }).click()
 await page.waitForTimeout(300)
 await page.setInputFiles('input[type=file]', '/tmp/frombrowser-identity.txt')
@@ -296,8 +309,7 @@ await page.locator('button', { hasText: 'Import key' }).click()
 await page.waitForTimeout(800)
 ok('.txt file import restores same DID', (await page.evaluate(() => JSON.parse(localStorage.getItem('flop-toolkit-v1')).identity?.did)) === didBefore)
 // restore the fresh-state precondition for the sections below
-await page.evaluate(() => { localStorage.clear() })
-await page.reload({ waitUntil: 'networkidle' })
+await resetFreshState(page)
 
 // ---- 7. kibble + chat error/retry UI exists, board loads ----
 console.log('7. live boards')

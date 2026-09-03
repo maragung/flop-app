@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { readRoom } from '../lib/technocore.js'
 import { signedPost } from '../lib/actions.js'
@@ -54,9 +54,21 @@ const LATER = (f) => f.type !== 'offer' && f.type !== 'accept'
 
 function TclkStats({ meDid }) {
   const { t } = useI18n()
-  const [stats, setStats] = useState(null)
+  const store = useStore()
+  const storeRef = useRef(store)
+  storeRef.current = store
+  // seed from the last-known-good fold so a reload / backend hiccup shows the
+  // previous numbers instantly (timestamped "as of") instead of a blank card
+  const seed = (() => {
+    const s = store.state.lastGood && store.state.lastGood.tclk
+    return s && meDid && s.did === meDid ? s : null
+  })()
+  const [stats, setStats] = useState(seed ? seed.data : null)
+  const [at, setAt] = useState(seed ? seed.at : null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const statsRef = useRef(stats)
+  statsRef.current = stats
 
   const load = useCallback(async () => {
     if (!meDid) return
@@ -80,7 +92,7 @@ function TclkStats({ meDid }) {
       // later frames for each contract live in its derived deal room — and,
       // on a deployment at its room cap, in the offer room. Read the deal
       // rooms of the most recent contracts; the offer room is already read.
-      const rooms = await Promise.all(mine.slice(0, 12).map(({ frame: o }) => {
+      const rooms = await Promise.all(mine.slice(0, 40).map(({ frame: o }) => {
         const acc = acceptPairByOfferId.get(o.id)
         return acc ? readRoom(dealRoom(acc.frame.contract), { limit: 500 }).catch(() => null) : null
       }))
@@ -116,7 +128,13 @@ function TclkStats({ meDid }) {
         }
       }
       setStats(out)
-    } catch (e) { setErr(e) }
+      setAt(new Date().toISOString())
+      storeRef.current.setLastGood('tclk', { did: meDid, at: new Date().toISOString(), data: out })
+    } catch (e) {
+      const c = storeRef.current.state.lastGood && storeRef.current.state.lastGood.tclk
+      if (statsRef.current == null && c && c.did === meDid) { setStats(c.data); setAt(c.at) } // keep the last snapshot
+      else setErr(e)
+    }
     setBusy(false)
   }, [meDid])
 
@@ -151,6 +169,7 @@ function TclkStats({ meDid }) {
             {t('tk_st_volume')}: <b>{vol || '—'}</b>
             {stats.lastMs > 0 && <> · {t('tk_st_last')}: {new Date(stats.lastMs).toLocaleString()}</>}
           </p>
+          {at && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('st_asof').replace('{at}', new Date(at).toLocaleString())}</p>}
         </>
       )}
     </div>
