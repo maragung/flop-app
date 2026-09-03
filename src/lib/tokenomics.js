@@ -83,6 +83,9 @@ export const AIRDROP_BREAKDOWN = [
 ]
 
 // Halving table: era, window, community block reward, era emission.
+// `cumulative` is total supply (genesis + community + team/foundation) at the
+// END of the era's window — era 4 ends exactly at year 10, so its row shows
+// the 17.19bn year-10 figure the teaser publishes.
 export function halvingSchedule() {
   const rows = []
   for (let era = 0; era <= 5; era++) {
@@ -94,6 +97,7 @@ export function halvingSchedule() {
       toYear: to / 365,
       reward: LAUNCH_REWARD / 2 ** era,
       emission: HALVING_DAYS * BLOCKS_PER_DAY * (LAUNCH_REWARD / 2 ** era),
+      cumulative: supplyAtDay(to),
     })
   }
   return rows

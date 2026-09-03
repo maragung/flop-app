@@ -7,7 +7,7 @@ import { encryptSeedToPem, hexToBytes } from './keyfile.js'
 
 const LS_KEY = 'flop-toolkit-v1'
 const COOKIE_PREFIX = 'ftk'
-const COOKIE_CHUNK = 3600 // bytes per cookie, safely under the 4 KB ceiling
+const COOKIE_CHUNK = 3600 // encoded bytes per cookie, safely under the 4 KB ceiling
 // The task list itself lives in tasks.js (merged technocore playbook + FLOP
 // airdrop guide, with auto-detection keys consumed by contrib.js).
 
@@ -73,11 +73,30 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[1]) : null
 }
 
+// encodeURIComponent leaves these characters as-is (1 char each); everything
+// else becomes %XX escapes — 3 chars per UTF-8 byte, so non-ASCII text can
+// inflate a chunk up to 3× (emoji 4×). Chunk by that encoded size, or the
+// browser silently drops any cookie over ~4 KB and the snapshot becomes
+// unrestorable even though the save reported success.
+const UNRESERVED = /[A-Za-z0-9\-_.!~*'()]/
+const cookieCharLen = (ch) => {
+  if (UNRESERVED.test(ch)) return 1
+  const c = ch.codePointAt(0)
+  const utf8Bytes = c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4
+  return 3 * utf8Bytes
+}
+
 export function cookiesWrite(state) {
   try {
     const json = JSON.stringify(state)
     const chunks = []
-    for (let i = 0; i < json.length; i += COOKIE_CHUNK) chunks.push(json.slice(i, i + COOKIE_CHUNK))
+    let cur = '', curLen = 0
+    for (const ch of json) {
+      const l = cookieCharLen(ch)
+      if (curLen + l > COOKIE_CHUNK) { chunks.push(cur); cur = ch; curLen = l }
+      else { cur += ch; curLen += l }
+    }
+    if (cur) chunks.push(cur)
     // clear stale chunks from a previous, larger save
     const oldCount = getCookie(`${COOKIE_PREFIX}n`)
     if (oldCount) for (let i = Number(oldCount); i < chunks.length + 32; i++) setCookie(`${COOKIE_PREFIX}${i}`, '', -1)
@@ -236,7 +255,7 @@ export function StoreProvider({ children }) {
         if (!s.lastNonces[room] || n > s.lastNonces[room]) s.lastNonces[room] = n
       }),
       setChatRoom: (room) => update((s) => { s.chat.lastRoom = room }),
-      replaceState: (next) => setState(next),
+      replaceState: (next) => setState({ ...emptyState(), ...next }), // merge over defaults so a backup/cookie snapshot missing a newer key can't crash the app
       cookiesInfo: () => ({ count: Number(getCookie(`${COOKIE_PREFIX}n`)) || 0, at: getCookie(`${COOKIE_PREFIX}t`) }),
       wipeAll: () => { lsClear(); cookiesClear(); setState(emptyState()) },
     }

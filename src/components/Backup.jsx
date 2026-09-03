@@ -39,10 +39,13 @@ export default function Backup() {
         if (kind === 'file') {
           const blob = new Blob([json], { type: 'application/json' })
           const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
+          const url = URL.createObjectURL(blob)
+          a.href = url
           a.download = `flop-toolkit-backup-${new Date().toISOString().slice(0, 10)}.json`
           a.click()
-          URL.revokeObjectURL(a.href)
+          // revoke on a delay — Safari/Firefox can abort the download if the
+          // blob URL dies before the save dialog has actually opened
+          setTimeout(() => URL.revokeObjectURL(url), 1000)
           say(t('bk_dl_flash'))
           store.update((s) => { s.lastBackupAt = new Date().toISOString() })
         } else {

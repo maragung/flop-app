@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n.js'
 import {
   monthlySupply, halvingSchedule, ALLOCATIONS, AIRDROP_BREAKDOWN,
-  TOTAL_BY_Y10, TERMINAL_INFLATION, GENESIS,
+  TOTAL_BY_Y10, TERMINAL_INFLATION,
 } from '../lib/tokenomics.js'
 
 const bn = (n, digits = 2) => `${(n / 1e9).toFixed(digits)}bn`
@@ -223,7 +223,7 @@ export default function Tokenomics() {
                 <td>Y{r.fromYear} – Y{r.toYear}{r.era === 5 ? ' → forever' : ''}</td>
                 <td className="mono">{r.reward}</td>
                 <td className="mono">{bn(r.emission, 2)}</td>
-                <td className="mono">{bn(r.era === 0 ? GENESIS + r.emission : GENESIS + schedule.slice(0, r.era + 1).reduce((n, x) => n + x.emission, 0), 2)}</td>
+                <td className="mono">{bn(r.cumulative, 2)}</td>
               </tr>
             ))}
           </tbody>

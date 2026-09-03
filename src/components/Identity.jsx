@@ -32,10 +32,13 @@ function KeyField({ label, value, secret = false }) {
 function download(name, text) {
   const blob = new Blob([text], { type: 'text/plain' })
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
+  const url = URL.createObjectURL(blob)
+  a.href = url
   a.download = name
   a.click()
-  URL.revokeObjectURL(a.href)
+  // revoke on a delay — Safari/Firefox can abort the download if the blob URL
+  // dies before the save dialog has actually opened
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 const safeName = (nick) => (nick || 'anon').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'anon'
