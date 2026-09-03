@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (125 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (129 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -273,6 +273,16 @@ let boardLoaded = true
 try { await page.locator('.job').first().waitFor({ state: 'visible', timeout: 30000 }) } catch { boardLoaded = false }
 ok('board loaded jobs', boardLoaded && (await page.locator('.job').count()) > 0)
 ok('refresh button present', await page.locator('button', { hasText: 'Refresh' }).count() === 1)
+// the step-by-step guide card (kb_g_* keys) — 6 numbered steps + collapse toggle
+ok('guide card present', await page.locator('[data-testid="kibble-guide"]').count() === 1)
+ok('guide shows 6 numbered steps', await page.locator('[data-testid="kibble-guide"] .kbstep').count() === 6)
+ok('guide step badges count 1..6',
+  (await page.locator('[data-testid="kibble-guide"] .stepn').allTextContents()).join(',') === '1,2,3,4,5,6')
+await page.locator('[data-testid="kibble-guide"] button', { hasText: 'Hide guide' }).click()
+const hidden = (await page.locator('[data-testid="kibble-guide"] .kbstep').count()) === 0
+await page.locator('[data-testid="kibble-guide"] button', { hasText: 'Show guide' }).click()
+ok('guide hide/show toggle collapses and restores steps',
+  hidden && (await page.locator('[data-testid="kibble-guide"] .kbstep').count()) === 6)
 await page.locator('.navtabs button', { hasText: 'Agent Chat' }).click()
 let chatLoaded = true
 try { await page.locator('.msg').first().waitFor({ state: 'visible', timeout: 30000 }) } catch { chatLoaded = false }
