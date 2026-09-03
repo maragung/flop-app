@@ -19,6 +19,32 @@ const errors = []
 let pass = 0, fail = 0
 const ok = (name, cond) => { if (cond) { pass++; console.log(`  ✓ ${name}`) } else { fail++; console.log(`  ✗ ${name}`) } }
 
+// The kibble board is a live third-party feed (flop-kibble.onrender.com on
+// render free-tier: /api/board is recomputed with no cache, so a hit can take
+// 0.8s or 48s+ after the instance sleeps). These checks assert real UI state
+// once the board has LOADED, so settleBoard retries the fetch (via the board's
+// own Refresh button) instead of racing a slow backend. wantJobs = a board with
+// jobs; otherwise jobs OR the 'No jobs match.' empty-state note both count.
+async function settleBoard(page, { wantJobs = false, attempts = 3, budgetMs = 30000 } = {}) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await page.waitForFunction(
+        (needJobs) => {
+          const jobs = document.querySelectorAll('.job').length > 0
+          const nomatch = [...document.querySelectorAll('.joblist')].some((n) => n.textContent.includes('No jobs match.'))
+          return jobs || (!needJobs && nomatch)
+        },
+        wantJobs, { timeout: budgetMs, polling: 500 },
+      )
+      return true
+    } catch {
+      if (i === attempts - 1) return false
+      await page.locator('button', { hasText: 'Refresh' }).first().click()
+    }
+  }
+  return false
+}
+
 const browser = await chromium.launch({ executablePath: EXE, args: ['--no-sandbox'] })
 const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 1400 }, permissions: ['clipboard-read', 'clipboard-write'] })
 const page = await ctx.newPage()
@@ -276,9 +302,8 @@ await page.reload({ waitUntil: 'networkidle' })
 // ---- 7. kibble + chat error/retry UI exists, board loads ----
 console.log('7. live boards')
 await page.locator('.navtabs button', { hasText: 'Kibble Board' }).click()
-let boardLoaded = true
-try { await page.locator('.job').first().waitFor({ state: 'visible', timeout: 30000 }) } catch { boardLoaded = false }
-ok('board loaded jobs', boardLoaded && (await page.locator('.job').count()) > 0)
+const boardSettled = await settleBoard(page, { wantJobs: true })
+ok('board loaded jobs', boardSettled && (await page.locator('.job').count()) > 0)
 ok('refresh button present', await page.locator('button', { hasText: 'Refresh' }).count() === 1)
 // the step-by-step guide card (kb_g_* keys) — 6 numbered steps + collapse toggle
 ok('guide card present', await page.locator('[data-testid="kibble-guide"]').count() === 1)
@@ -431,14 +456,9 @@ ok('needs-attest filter appears once an identity exists', await attFilter.count(
 await attFilter.click()
 await page.waitForTimeout(500)
 ok('filter toggles to checked/primary', (await attFilter.getAttribute('class')).includes('primary') && (await attFilter.textContent()).includes('✓'))
-// wait until the board itself has loaded (jobs or the no-match note), then assert
-try {
-  await page.waitForFunction(
-    () => document.querySelectorAll('.job').length > 0
-      || [...document.querySelectorAll('.joblist')].some((n) => n.textContent.includes('No jobs match.')),
-    null, { timeout: 30000, polling: 500 },
-  )
-} catch {}
+// wait until the board has loaded under the filter (jobs or the no-match note);
+// retry the fetch when the live backend is slow rather than racing it
+const filterSettled = await settleBoard(page)
 // every surviving job is delivered and neither poster nor worker is YOU
 const filtered = await page.evaluate(() => {
   const jobs = [...document.querySelectorAll('.job')]
@@ -452,7 +472,7 @@ const filtered = await page.evaluate(() => {
 })
 ok('filtered list shows only delivered jobs', filtered.n === 0 || filtered.allDelivered)
 ok('filtered list never shows my own jobs', filtered.n === 0 || filtered.noneMine)
-ok('filter result is jobs or the no-match note', (filtered.n > 0) !== filtered.nomatch)
+ok('filter result is jobs or the no-match note', filterSettled && (filtered.n > 0) !== filtered.nomatch)
 
 // ---- 12. chat pre-send quality gate (anti-farming guardrail) ----
 console.log('12. quality gate')
