@@ -1,4 +1,4 @@
-// e2e.mjs — the FLOP Toolkit regression suite (111 checks) via playwright-core.
+// e2e.mjs — the FLOP Toolkit regression suite (118 checks) via playwright-core.
 //
 // Usage:
 //   npm install                 # playwright-core is a devDependency
@@ -455,6 +455,14 @@ await compose.fill('A meaningful test message that is long enough to clear the o
 await page.waitForTimeout(300)
 ok('a 140+ character message clears the warning', (await page.locator('.note.warn').filter({ hasText: 'Quality check' }).count()) === 0)
 ok('suggested rooms include the FLOP rooms', (await page.locator('.roompick button', { hasText: 'flop_governance' }).count()) === 1 && (await page.locator('.roompick button', { hasText: 'flop_labs' }).count()) === 1)
+// unchecking "sign as my DID" must warn the post is unattributable
+const signBox = page.locator('label', { hasText: 'sign as my DID' }).locator('input')
+ok('sign-as-DID checkbox defaults to checked', await signBox.isChecked())
+await signBox.click()
+await page.waitForTimeout(200)
+ok('unsigned mode warns the post is not attributable', (await page.locator('p').filter({ hasText: 'NOT attributable to your DID' }).count()) === 1)
+await signBox.click()
+await page.waitForTimeout(200)
 
 // ---- 13. testnet readiness (GPU check + spend→unlock calculator) ----
 console.log('13. testnet readiness')
@@ -471,6 +479,11 @@ ok('spend calculator input present', await spendInput.count() === 1)
 await spendInput.fill('300')
 await page.waitForTimeout(300)
 ok('spend calculator computes the 3:1 unlock', (await page.locator('b').filter({ hasText: 'unlocks ≈ 100' }).count()) === 1)
+// the how-contributions-will-be-counted card, with all four sections
+ok('contribution-counting card heading present', (await page.locator('h3').filter({ hasText: 'How contributions will likely be counted' }).count()) === 1)
+for (const sub of ['Confirmed by the teaser', 'Inferred from systems they already run', 'How they will recognize you', 'Honest unknowns']) {
+  ok(`card section "${sub}" present`, (await page.locator('b').filter({ hasText: sub }).count()) >= 1)
+}
 
 // ---- 14. evidence report, DID-rotation guard, next best move ----
 console.log('14. report & rotation guard')

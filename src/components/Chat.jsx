@@ -227,6 +227,7 @@ export default function Chat() {
           <>
             <label>{t('ch_nick')}</label>
             <input value={chat.nick} onChange={(e) => store.setNick(e.target.value)} maxLength={48} />
+            {identity && <p className="tiny" style={{ color: 'var(--warn)', margin: '2px 0 0' }}>⚠ {t('ch_unsigned_warn')}</p>}
           </>
         )}
         <label>{t('ch_msg_label')}</label>

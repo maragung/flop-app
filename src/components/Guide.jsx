@@ -173,6 +173,25 @@ export default function Guide({ go }) {
         </div>
       </div>
 
+      {/* ---- how contributions will likely be counted ---- */}
+      <div className="card">
+        <h3>{t('hc_h')} <span className="muted small">{t('hc_sub')}</span></h3>
+        <div className="grid cols-2">
+          <div>
+            <b className="small">{t('hc_c1_h')}</b>
+            <p className="small muted" style={{ margin: '6px 0 0' }}>{t('hc_c1')}</p>
+            <b className="small" style={{ display: 'block', marginTop: 12 }}>{t('hc_c2_h')}</b>
+            <p className="small muted" style={{ margin: '6px 0 0' }}>{t('hc_c2')}</p>
+          </div>
+          <div>
+            <b className="small">{t('hc_c3_h')}</b>
+            <p className="small muted" style={{ margin: '6px 0 0' }}>{t('hc_c3')}</p>
+            <b className="small" style={{ display: 'block', marginTop: 12 }}>{t('hc_c4_h')}</b>
+            <p className="small muted" style={{ margin: '6px 0 0' }}>{t('hc_c4')}</p>
+          </div>
+        </div>
+      </div>
+
       {/* ---- the contribution engine ---- */}
       <div className="card">
         <div className="spread">
