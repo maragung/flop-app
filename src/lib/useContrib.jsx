@@ -1,14 +1,20 @@
 // useContrib.jsx — React glue for the auto-detection engine: runs/caches the
 // activity scan in the store and exposes the computed auto-checks to any page.
+//
+// Auto-detected completions are STICKY: the scan only sees the recent window
+// of each room, so a task detected done yesterday would un-tick today once its
+// messages scroll out. The first time a task is detected done it is recorded in
+// state.autoDone (and travels with backups); mergeStickyChecks() folds that
+// history back in. Only RECURRING_AUTOS (announcement checks) re-evaluate.
 import { useCallback, useEffect, useState } from 'react'
 import { useStore } from './store.jsx'
-import { refreshActivity, computeAutoChecks } from './contrib.js'
+import { refreshActivity, computeAutoChecks, mergeStickyChecks } from './contrib.js'
 
 const STALE_MS = 15 * 60 * 1000
 
 export function useContrib({ auto = false } = {}) {
   const store = useStore()
-  const { identity, activity } = store.state
+  const { identity, activity, autoDone } = store.state
   const [scanning, setScanning] = useState(false)
   const [scanErr, setScanErr] = useState('')
 
@@ -33,7 +39,16 @@ export function useContrib({ auto = false } = {}) {
   }, [auto, identity?.did]) // eslint-disable-line
 
   const current = activity && activity.did === identity?.did ? activity : null
-  const autoChecks = computeAutoChecks(store.state, current?.scan, current?.score)
+  const rawChecks = computeAutoChecks(store.state, current?.scan, current?.score)
+
+  // record first-time detections once per scan (same-object bail-out keeps this cheap)
+  const doneKey = Object.entries(rawChecks).filter(([, c]) => c.done).map(([k]) => k).join(',')
+  useEffect(() => {
+    if (!doneKey) return
+    store.markAutoDones(doneKey.split(','))
+  }, [doneKey]) // eslint-disable-line
+
+  const autoChecks = mergeStickyChecks(rawChecks, autoDone)
 
   return {
     autoChecks,

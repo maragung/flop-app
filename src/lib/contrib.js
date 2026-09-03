@@ -162,6 +162,25 @@ export function computeAutoChecks(state, scan, scoreTerms, now = Date.now()) {
   return out
 }
 
+// Auto tasks that are a recurring habit rather than a one-off achievement —
+// these legitimately re-evaluate on every scan (announcement checks go stale
+// after 7 days on purpose). Everything else, once detected, stays done: the
+// room scan only sees the last ~200 messages per room, so yesterday's work
+// would otherwise scroll out of the window and un-tick the task.
+export const RECURRING_AUTOS = new Set(['monitor-ann'])
+
+// Effective auto-checks: what the scan just detected, plus everything ever
+// detected before (sticky history) for non-recurring tasks.
+export function mergeStickyChecks(autoChecks, autoDone) {
+  const out = {}
+  for (const [key, check] of Object.entries(autoChecks || {})) {
+    const sticky = !RECURRING_AUTOS.has(key) && autoDone?.[key]
+    if (check.done || !sticky) out[key] = check
+    else out[key] = { ...check, done: true, detail: 'kept from earlier detection (' + new Date(sticky).toLocaleDateString() + ') — no longer in the recent window' }
+  }
+  return out
+}
+
 // Effective completion for one task: manual tick OR auto-detected.
 export function taskDone(task, checklist, autoChecks) {
   if (task.auto && autoChecks?.[task.auto]?.done) return true

@@ -24,6 +24,7 @@ export function emptyState() {
     roomVisits: {}, // room -> { n, first, last }
     signVerifiedAt: null,
     lastAnnCheck: null,
+    autoDone: {}, // auto key -> ISO ts first detected done (sticky: scans only see the recent window)
     activity: null, // { at, did, scan, score } — cached auto-detection scan
     lastBackupAt: null,
   }
@@ -194,6 +195,12 @@ export function StoreProvider({ children }) {
         s.roomVisits[room] = { n: v.n + 1, first: v.first, last: new Date().toISOString() }
       }),
       markSignVerified: () => update((s) => { s.signVerifiedAt = new Date().toISOString() }),
+      markAutoDones: (keys) => update((s) => {
+        const fresh = (keys || []).filter((k) => k && !s.autoDone[k])
+        if (!fresh.length) return s // nothing new — return the same object so React bails out
+        const ts = new Date().toISOString()
+        fresh.forEach((k) => { s.autoDone[k] = ts })
+      }),
       markAnnCheck: () => update((s) => {
         const today = new Date().toISOString().slice(0, 10)
         const lastDay = s.lastAnnCheck ? String(s.lastAnnCheck).slice(0, 10) : null
